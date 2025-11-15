@@ -1,0 +1,1824 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ABC分析ツール</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: "Hiragino Sans", "Yu Gothic", "Meiryo", "MS PGothic", sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 24px;
+        }
+        
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+        
+        .modal {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            max-width: 600px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        
+        .modal h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+        
+        .modal-content {
+            margin-bottom: 25px;
+            line-height: 1.8;
+            color: #555;
+        }
+        
+        .library-list {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+            border-left: 4px solid #1F5F8B;
+        }
+        
+        .library-list li {
+            margin: 8px 0;
+            color: #333;
+        }
+        
+        .security-info {
+            background: #e8f5e9;
+            padding: 12px;
+            border-radius: 4px;
+            margin: 15px 0;
+            border-left: 4px solid #4CAF50;
+            font-size: 14px;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: flex-end;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #1F5F8B;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #164563;
+        }
+        
+        .btn-secondary {
+            background: #ddd;
+            color: #333;
+        }
+        
+        .btn-secondary:hover {
+            background: #ccc;
+        }
+        
+        .loading-message {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #1F5F8B;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            background: #ffebee;
+            padding: 20px;
+            border-radius: 4px;
+            border-left: 4px solid #f44336;
+            color: #c62828;
+        }
+        
+        .upload-area {
+            border: 3px dashed #ccc;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .upload-area:hover {
+            border-color: #1F5F8B;
+            background: #f9f9f9;
+        }
+        
+        .upload-area.dragover {
+            border-color: #1F5F8B;
+            background: #e3f2fd;
+        }
+        
+        .filters {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        
+        .filter-section {
+            margin-bottom: 25px;
+        }
+        
+        .filter-section h3 {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        .filter-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .filter-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .filter-item label {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #555;
+            font-size: 14px;
+        }
+        
+        .filter-item select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            height: 100px;
+        }
+        
+        .abc-criteria {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+        
+        .criteria-group {
+            background: white;
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        
+        .criteria-group h4 {
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .criteria-inputs {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .criteria-inputs label {
+            width: 80px;
+            font-size: 13px;
+            color: #666;
+        }
+        
+        .criteria-inputs input {
+            width: 80px;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+        
+        .execute-btn {
+            padding: 15px 40px;
+            background: #1F5F8B;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        
+        .execute-btn:hover {
+            background: #164563;
+        }
+        
+        .result-section {
+            margin-top: 30px;
+        }
+        
+        .table-controls {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .control-row {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .column-selector {
+            margin-bottom: 15px;
+        }
+        
+        .column-selector h4 {
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        
+        .column-checkboxes {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            background: white;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .column-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 13px;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            position: relative;
+            max-height: 600px;
+            width: 100%;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            table-layout: fixed;
+        }
+        
+        th {
+            background: #2B5797;
+            color: white;
+            padding: 12px 8px;
+            text-align: center;
+            vertical-align: middle;
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            cursor: pointer;
+            user-select: none;
+            white-space: normal;
+            word-wrap: break-word;
+            line-height: 1.4;
+            min-height: 50px;
+            box-sizing: border-box;
+        }
+        
+        th.sortable:hover {
+            background: #3d6ba8;
+        }
+        
+        th.dragging {
+            opacity: 0.5;
+        }
+        
+        th.drag-over {
+            border-left: 3px solid #4CAF50;
+        }
+        
+        td {
+            padding: 6px 8px;
+            border-bottom: 1px solid #eee;
+            white-space: nowrap;
+            overflow: hidden;
+            position: relative;
+            font-weight: bold;
+            box-sizing: border-box;
+        }
+        
+        td.text-overflow {
+            display: flex;
+            align-items: center;
+        }
+        
+        td .text-content {
+            display: inline-block;
+            transform-origin: left center;
+            white-space: nowrap;
+        }
+        
+        th .text-content {
+            display: inline-block;
+            white-space: normal;
+            word-wrap: break-word;
+            width: 100%;
+            text-align: center;
+        }
+        
+        tr:hover {
+            background: #f9f9f9;
+        }
+        
+        .abc-rank-a {
+            background-color: #0070C0 !important;
+            color: white !important;
+            font-weight: bold;
+        }
+        
+        .abc-rank-b {
+            background-color: #97D2FF !important;
+            color: black !important;
+            font-weight: bold;
+        }
+        
+        .abc-rank-c {
+            background-color: #EFF27E !important;
+            color: black !important;
+            font-weight: bold;
+        }
+        
+        .sort-icon {
+            margin-right: 5px;
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.7);
+            display: inline-block;
+            vertical-align: middle;
+        }
+        
+        .sort-asc .sort-icon {
+            color: white;
+        }
+        
+        .sort-desc .sort-icon {
+            color: white;
+        }
+        
+        .export-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .export-btn {
+            padding: 10px 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        .export-btn:hover {
+            background: #45a049;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1F5F8B 0%, #2C7FB8 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 20000;
+            animation: fadeOut 0.5s ease-out 2s forwards;
+        }
+        
+        @keyframes fadeOut {
+            to {
+                opacity: 0;
+                visibility: hidden;
+            }
+        }
+        
+        .splash-content {
+            text-align: center;
+        }
+        
+        .splash-title {
+            color: white;
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 40px;
+            opacity: 0;
+            animation: fadeInUp 0.6s ease-out 0.2s forwards;
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .chart-animation {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 8px;
+            height: 120px;
+            margin-bottom: 30px;
+        }
+        
+        .bar {
+            width: 20px;
+            background: white;
+            border-radius: 3px 3px 0 0;
+            opacity: 0.9;
+            animation: growBar 0.8s ease-out forwards;
+        }
+        
+        .bar:nth-child(1) {
+            height: 60px;
+            animation-delay: 0.3s;
+        }
+        
+        .bar:nth-child(2) {
+            height: 90px;
+            animation-delay: 0.4s;
+        }
+        
+        .bar:nth-child(3) {
+            height: 45px;
+            animation-delay: 0.5s;
+        }
+        
+        .bar:nth-child(4) {
+            height: 75px;
+            animation-delay: 0.6s;
+        }
+        
+        .bar:nth-child(5) {
+            height: 100px;
+            animation-delay: 0.7s;
+        }
+        
+        .bar:nth-child(6) {
+            height: 55px;
+            animation-delay: 0.8s;
+        }
+        
+        @keyframes growBar {
+            from {
+                transform: scaleY(0);
+                opacity: 0;
+            }
+            to {
+                transform: scaleY(1);
+                opacity: 0.9;
+            }
+        }
+        
+        .loading-text {
+            color: white;
+            font-size: 14px;
+            opacity: 0;
+            animation: fadeIn 0.5s ease-out 1.5s forwards;
+        }
+        
+        @keyframes fadeIn {
+            to {
+                opacity: 0.8;
+            }
+        }
+        
+        .post-filter-section {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .post-filter-section h3 {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .post-filter-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div id="splashScreen" class="splash-screen">
+        <div class="splash-content">
+            <div class="splash-title">ABC分析ツール</div>
+            <div class="chart-animation">
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+            </div>
+            <div class="loading-text">Loading...</div>
+        </div>
+    </div>
+    
+    <div id="confirmModal" class="modal-overlay hidden">
+        <div class="modal">
+            <h2>外部ライブラリの読み込み確認</h2>
+            <div class="modal-content">
+                <p>このツールを使用するには、以下のJavaScriptライブラリを外部から読み込む必要があります:</p>
+                
+                <div class="library-list">
+                    <ul>
+                        <li><strong>XLSX.js (v0.18.5)</strong> - Excelファイル処理用</li>
+                        <li><strong>html2canvas (v1.4.1)</strong> - 画像出力用</li>
+                    </ul>
+                </div>
+                
+                <div class="security-info">
+                    <strong>接続情報:</strong><br>
+                    ・接続先: https://cdnjs.cloudflare.com (Cloudflare公式CDN)<br>
+                    ・アップロードしたデータは外部に送信されません<br>
+                    ・すべての処理はブラウザ内で完結します
+                </div>
+                
+                <p style="color: #666; font-size: 13px; margin-top: 15px;">
+                    ※ライブラリは毎回のツール起動時に読み込まれ、ブラウザ内でのみ動作します。<br>
+                    ※本ツール内で利用されるCDN(Content Delivery Network)経由で提供される外部ライブラリについては、その安全性、可用性、正確性、およびツールの機能に与える影響を含め、一切の責任を負いません。
+                </p>
+            </div>
+            
+            <div class="modal-buttons">
+                <button class="btn btn-secondary" id="cancelBtn">キャンセル</button>
+                <button class="btn btn-primary" id="approveBtn">記載事項に同意してライブラリを読み込む</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="container">
+        <h1>ABC分析ツール</h1>
+        
+        <div id="loadingMessage" class="loading-message hidden">
+            <div class="loading-spinner"></div>
+            <p>ライブラリを読み込んでいます...</p>
+        </div>
+        
+        <div id="errorMessage" class="error-message hidden"></div>
+        
+        <div id="mainApp" class="hidden">
+            <div class="upload-area" id="uploadArea">
+                <p>Excelファイルをドラッグ&ドロップ または クリックして選択</p>
+                <input type="file" id="fileInput" accept=".xlsx,.xls" style="display:none;">
+            </div>
+            
+            <div id="analysisSection" class="hidden">
+                <div class="filters">
+                    <div class="filter-section">
+                        <h3>階層フィルター設定</h3>
+                        <div class="filter-group">
+                            <div class="filter-item">
+                                <label>ディビジョン</label>
+                                <select id="filterDivision" multiple size="5"></select>
+                            </div>
+                            <div class="filter-item">
+                                <label>カテゴリー</label>
+                                <select id="filterCategory" multiple size="5"></select>
+                            </div>
+                            <div class="filter-item">
+                                <label>サブカテゴリー</label>
+                                <select id="filterSubCategory" multiple size="5"></select>
+                            </div>
+                            <div class="filter-item">
+                                <label>セグメント</label>
+                                <select id="filterSegment" multiple size="5"></select>
+                            </div>
+                            <div class="filter-item">
+                                <label>サブセグメント</label>
+                                <select id="filterSubSegment" multiple size="5"></select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="filter-section">
+                        <h3>ABC判定基準の設定</h3>
+                        <div class="abc-criteria">
+                            <div class="criteria-group">
+                                <h4>売上累積構成比</h4>
+                                <div class="criteria-inputs">
+                                    <label>Aランク:</label>
+                                    <input type="number" id="salesCriteriaA" value="70" min="0" max="100">
+                                    <span>%まで</span>
+                                </div>
+                                <div class="criteria-inputs">
+                                    <label>Bランク:</label>
+                                    <input type="number" id="salesCriteriaB" value="20" min="0" max="100">
+                                    <span>%まで</span>
+                                </div>
+                                <div class="criteria-inputs">
+                                    <label>Cランク:</label>
+                                    <span>残り</span>
+                                </div>
+                            </div>
+                            
+                            <div class="criteria-group">
+                                <h4>リピート率</h4>
+                                <div class="criteria-inputs">
+                                    <label>Aランク:</label>
+                                    <input type="number" id="repeatCriteriaA" value="20" min="0" max="100">
+                                    <span>%以上</span>
+                                </div>
+                                <div class="criteria-inputs">
+                                    <label>Bランク:</label>
+                                    <input type="number" id="repeatCriteriaB" value="10" min="0" max="100">
+                                    <span>%以上</span>
+                                </div>
+                                <div class="criteria-inputs">
+                                    <label>Cランク:</label>
+                                    <span>それ以外</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="execute-btn" id="executeBtn">ABC分析を実行</button>
+                
+                <div id="resultSection" class="result-section hidden">
+                    <div class="post-filter-section">
+                        <h3>実行後フィルター</h3>
+                        <div class="post-filter-group">
+                            <div class="filter-item">
+                                <label>カテゴリー</label>
+                                <select id="postFilterCategory" multiple size="4"></select>
+                            </div>
+                            <div class="filter-item">
+                                <label>サブカテゴリー</label>
+                                <select id="postFilterSubCategory" multiple size="4"></select>
+                            </div>
+                            <div class="filter-item">
+                                <label>セグメント</label>
+                                <select id="postFilterSegment" multiple size="4"></select>
+                            </div>
+                            <div class="filter-item">
+                                <label>サブセグメント</label>
+                                <select id="postFilterSubSegment" multiple size="4"></select>
+                            </div>
+                            <div class="filter-item">
+                                <label>メーカー名</label>
+                                <select id="postFilterMaker" multiple size="4"></select>
+                            </div>
+                            <div class="filter-item">
+                                <label>ブランド</label>
+                                <select id="postFilterBrand" multiple size="4"></select>
+                            </div>
+                            <div class="filter-item">
+                                <label>定番</label>
+                                <select id="postFilterTeiban" multiple size="4"></select>
+                            </div>
+                            <div class="filter-item">
+                                <label>推定値算出可否</label>
+                                <select id="postFilterSuitei" multiple size="4"></select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="table-controls">
+                        <div class="control-row">
+                            <label>
+                                <input type="checkbox" id="fixHeaderCheck">
+                                列名を固定
+                            </label>
+                        </div>
+                        
+                        <div class="column-selector">
+                            <h4>表示列の選択</h4>
+                            <div class="column-checkboxes" id="columnCheckboxes"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="table-container" id="tableContainer"></div>
+                    
+                    <div class="export-buttons">
+                        <button class="export-btn" id="exportExcelBtn">Excelダウンロード</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                document.getElementById('splashScreen').style.display = 'none';
+                document.getElementById('confirmModal').classList.remove('hidden');
+            }, 2500);
+        });
+        
+        const libraries = [
+            {
+                name: 'XLSX',
+                url: 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+                check: () => typeof XLSX !== 'undefined'
+            },
+            {
+                name: 'html2canvas',
+                url: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
+                check: () => typeof html2canvas !== 'undefined'
+            }
+        ];
+        
+        let librariesLoaded = false;
+        let rawData = [];
+        let filteredData = [];
+        let displayData = [];
+        let analysisResults = [];
+        let currentSortColumn = null;
+        let currentSortOrder = null;
+        let columnOrder = [];
+        let availableColumns = [];
+        
+        const defaultColumns = [
+            'カテゴリー', 'サブカテゴリー', 'セグメント', 'サブセグメント',
+            'JAN', '商品名', '規格',
+            '●売上金額(円)', '売上金額ABC', '●売上金額/1店', '売上金額/1店ABC',
+            '導入時推定売上金額/1店', '推定売上金額/1店ABC', '●リピート率', 'リピート率ABC'
+        ];
+        
+        const allColumnsOrder = [
+            'ディビジョン', 'カテゴリー', 'サブカテゴリー', 'セグメント', 'サブセグメント',
+            'JAN', '商品名', '規格', 'メーカー名', 'ブランド',
+            '発単', '幅', '高さ', '奥行', '季節', 'マスタ登録', '定番', '推定値算出可否',
+            'MEGA店舗数', 'SuC店舗数', '●SMART(L/S)店舗数', 'SMART(boxなど)店舗数',
+            '平均単価', '市場平均単価', '●売上数量', '●売上数量/1店',
+            '●売上金額(円)', '売上金額ABC', '●売上金額/1店', '売上金額/1店ABC',
+            '●PI値', 'PI値(参考)', '市場PI値', 'POS客数全体', 'POS客数全体/1店',
+            '導入時推定売上数量/1店', '導入時推定売上金額/1店', '推定売上金額/1店ABC',
+            '●1回あたり点数', '●バスケット出現率', '●リピート率', 'リピート率ABC',
+            '最大顧客年代層', '最大ライフステージ層',
+            '【東海】数量PI値順位', '【東海】数量PI値相対指数', '【東海】エリア特化指数(RPI)'
+        ];
+        
+        document.getElementById('approveBtn').addEventListener('click', loadLibraries);
+        document.getElementById('cancelBtn').addEventListener('click', handleCancel);
+        
+        function loadLibraries() {
+            document.getElementById('confirmModal').classList.add('hidden');
+            document.getElementById('loadingMessage').classList.remove('hidden');
+            
+            const promises = libraries.map(lib => loadScript(lib));
+            
+            Promise.all(promises)
+                .then(() => {
+                    librariesLoaded = true;
+                    document.getElementById('loadingMessage').classList.add('hidden');
+                    document.getElementById('mainApp').classList.remove('hidden');
+                    initializeApp();
+                })
+                .catch(error => {
+                    document.getElementById('loadingMessage').classList.add('hidden');
+                    const errorMsg = document.getElementById('errorMessage');
+                    errorMsg.textContent = `ライブラリの読み込みに失敗しました: ${error.message}`;
+                    errorMsg.classList.remove('hidden');
+                });
+        }
+        
+        function loadScript(lib) {
+            return new Promise((resolve, reject) => {
+                if (lib.check()) {
+                    resolve();
+                    return;
+                }
+                
+                const script = document.createElement('script');
+                script.src = lib.url;
+                
+                script.onload = () => {
+                    if (lib.check()) {
+                        console.log(`${lib.name} loaded successfully`);
+                        resolve();
+                    } else {
+                        reject(new Error(`${lib.name} failed to initialize`));
+                    }
+                };
+                
+                script.onerror = () => {
+                    reject(new Error(`${lib.name} failed to load from CDN`));
+                };
+                
+                document.head.appendChild(script);
+            });
+        }
+        
+        function handleCancel() {
+            document.getElementById('confirmModal').classList.add('hidden');
+            const errorMsg = document.getElementById('errorMessage');
+            errorMsg.innerHTML = `
+                <strong>ライブラリの読み込みがキャンセルされました</strong><br>
+                このツールを使用するには、外部ライブラリの読み込みを承認する必要があります。<br>
+                ページを再読み込みして、再度お試しください。
+            `;
+            errorMsg.classList.remove('hidden');
+        }
+        
+        function initializeApp() {
+            const uploadArea = document.getElementById('uploadArea');
+            const fileInput = document.getElementById('fileInput');
+            
+            uploadArea.addEventListener('click', () => fileInput.click());
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+            uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                handleFile(e.dataTransfer.files[0]);
+            });
+            fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+            
+            document.getElementById('executeBtn').addEventListener('click', executeABCAnalysis);
+            document.getElementById('exportExcelBtn').addEventListener('click', exportToExcel);
+            document.getElementById('fixHeaderCheck').addEventListener('change', toggleHeaderFixed);
+            
+            // 実行後フィルターのイベント設定
+            ['postFilterCategory', 'postFilterSubCategory', 'postFilterSegment', 
+             'postFilterSubSegment', 'postFilterMaker', 'postFilterBrand', 
+             'postFilterTeiban', 'postFilterSuitei'].forEach(id => {
+                document.getElementById(id).addEventListener('change', applyPostFilters);
+            });
+            
+            // 階層フィルターのイベント設定
+            document.getElementById('filterDivision').addEventListener('change', () => updateHierarchyFilters('division'));
+            document.getElementById('filterCategory').addEventListener('change', () => updateHierarchyFilters('category'));
+            document.getElementById('filterSubCategory').addEventListener('change', () => updateHierarchyFilters('subCategory'));
+            document.getElementById('filterSegment').addEventListener('change', () => updateHierarchyFilters('segment'));
+        }
+        
+        function handleFile(file) {
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array', codepage: 932 });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                    
+                    rawData = jsonData;
+                    
+                    // 利用可能な列を取得
+                    if (rawData.length > 0) {
+                        availableColumns = Object.keys(rawData[0]);
+                    }
+                    
+                    initializeFilters();
+                    initializeColumnSelector();
+                    document.getElementById('analysisSection').classList.remove('hidden');
+                } catch (error) {
+                    alert('ファイルの読み込みに失敗しました: ' + error.message);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+        
+        function initializeFilters() {
+            // 全データを使って初期化
+            populateFilter('filterDivision', 'ディビジョン', rawData);
+            populateFilter('filterCategory', 'カテゴリー', rawData);
+            populateFilter('filterSubCategory', 'サブカテゴリー', rawData);
+            populateFilter('filterSegment', 'セグメント', rawData);
+            populateFilter('filterSubSegment', 'サブセグメント', rawData);
+        }
+        
+        function populateFilter(selectId, columnName, data) {
+            const select = document.getElementById(selectId);
+            const values = [...new Set(data.map(row => row[columnName]).filter(v => v))].sort();
+            
+            select.innerHTML = '';
+            values.forEach(value => {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = value;
+                select.appendChild(option);
+            });
+        }
+        
+        function updateHierarchyFilters(level) {
+            let filteredForHierarchy = [...rawData];
+            
+            // 常に上位階層から順番にフィルタリング
+            const divisionValues = getSelectedValues('filterDivision');
+            if (divisionValues.length > 0) {
+                filteredForHierarchy = filteredForHierarchy.filter(row => 
+                    divisionValues.includes(row['ディビジョン']));
+            }
+            
+            const categoryValues = getSelectedValues('filterCategory');
+            if (categoryValues.length > 0) {
+                filteredForHierarchy = filteredForHierarchy.filter(row => 
+                    categoryValues.includes(row['カテゴリー']));
+            }
+            
+            const subCategoryValues = getSelectedValues('filterSubCategory');
+            if (subCategoryValues.length > 0) {
+                filteredForHierarchy = filteredForHierarchy.filter(row => 
+                    subCategoryValues.includes(row['サブカテゴリー']));
+            }
+            
+            const segmentValues = getSelectedValues('filterSegment');
+            if (segmentValues.length > 0) {
+                filteredForHierarchy = filteredForHierarchy.filter(row => 
+                    segmentValues.includes(row['セグメント']));
+            }
+            
+            // 変更されたレベル以下の階層のフィルターを更新
+            if (level === 'division') {
+                updateFilterOptions('filterCategory', 'カテゴリー', filteredForHierarchy);
+                updateFilterOptions('filterSubCategory', 'サブカテゴリー', filteredForHierarchy);
+                updateFilterOptions('filterSegment', 'セグメント', filteredForHierarchy);
+                updateFilterOptions('filterSubSegment', 'サブセグメント', filteredForHierarchy);
+            } else if (level === 'category') {
+                // カテゴリーでフィルタリングされたデータで下位を更新
+                let categoryFiltered = [...rawData];
+                if (divisionValues.length > 0) {
+                    categoryFiltered = categoryFiltered.filter(row => 
+                        divisionValues.includes(row['ディビジョン']));
+                }
+                if (categoryValues.length > 0) {
+                    categoryFiltered = categoryFiltered.filter(row => 
+                        categoryValues.includes(row['カテゴリー']));
+                }
+                updateFilterOptions('filterSubCategory', 'サブカテゴリー', categoryFiltered);
+                updateFilterOptions('filterSegment', 'セグメント', categoryFiltered);
+                updateFilterOptions('filterSubSegment', 'サブセグメント', categoryFiltered);
+            } else if (level === 'subCategory') {
+                // サブカテゴリーでフィルタリングされたデータで下位を更新
+                let subCategoryFiltered = [...rawData];
+                if (divisionValues.length > 0) {
+                    subCategoryFiltered = subCategoryFiltered.filter(row => 
+                        divisionValues.includes(row['ディビジョン']));
+                }
+                if (categoryValues.length > 0) {
+                    subCategoryFiltered = subCategoryFiltered.filter(row => 
+                        categoryValues.includes(row['カテゴリー']));
+                }
+                if (subCategoryValues.length > 0) {
+                    subCategoryFiltered = subCategoryFiltered.filter(row => 
+                        subCategoryValues.includes(row['サブカテゴリー']));
+                }
+                updateFilterOptions('filterSegment', 'セグメント', subCategoryFiltered);
+                updateFilterOptions('filterSubSegment', 'サブセグメント', subCategoryFiltered);
+            } else if (level === 'segment') {
+                // セグメントでフィルタリングされたデータで下位を更新
+                let segmentFiltered = [...rawData];
+                if (divisionValues.length > 0) {
+                    segmentFiltered = segmentFiltered.filter(row => 
+                        divisionValues.includes(row['ディビジョン']));
+                }
+                if (categoryValues.length > 0) {
+                    segmentFiltered = segmentFiltered.filter(row => 
+                        categoryValues.includes(row['カテゴリー']));
+                }
+                if (subCategoryValues.length > 0) {
+                    segmentFiltered = segmentFiltered.filter(row => 
+                        subCategoryValues.includes(row['サブカテゴリー']));
+                }
+                if (segmentValues.length > 0) {
+                    segmentFiltered = segmentFiltered.filter(row => 
+                        segmentValues.includes(row['セグメント']));
+                }
+                updateFilterOptions('filterSubSegment', 'サブセグメント', segmentFiltered);
+            }
+        }
+        
+        function updateFilterOptions(selectId, columnName, data) {
+            const select = document.getElementById(selectId);
+            const currentValues = getSelectedValues(selectId);
+            const values = [...new Set(data.map(row => row[columnName]).filter(v => v))].sort();
+            
+            select.innerHTML = '';
+            values.forEach(value => {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = value;
+                if (currentValues.includes(value)) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            });
+        }
+        
+        function getSelectedValues(selectId) {
+            const select = document.getElementById(selectId);
+            return Array.from(select.selectedOptions).map(opt => opt.value);
+        }
+        
+        function initializeColumnSelector() {
+            const container = document.getElementById('columnCheckboxes');
+            container.innerHTML = '';
+            
+            // 指定された順序で列を配置
+            const orderedColumns = [...allColumnsOrder];
+            
+            // 実データに存在する列で、順序リストにない列を追加
+            availableColumns.forEach(col => {
+                if (!orderedColumns.includes(col) && !col.endsWith('ABC')) {
+                    orderedColumns.push(col);
+                }
+            });
+            
+            // ABC列を適切な位置に追加（データに存在しなくても表示）
+            ['売上金額ABC', '売上金額/1店ABC', '推定売上金額/1店ABC', 'リピート率ABC'].forEach(col => {
+                if (!orderedColumns.includes(col)) {
+                    const index = orderedColumns.findIndex(c => c === col.replace('ABC', ''));
+                    if (index !== -1) {
+                        orderedColumns.splice(index + 1, 0, col);
+                    }
+                }
+            });
+            
+            orderedColumns.forEach(col => {
+                const div = document.createElement('div');
+                div.className = 'column-checkbox';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `col_${col}`;
+                checkbox.value = col;
+                checkbox.checked = defaultColumns.includes(col);
+                checkbox.addEventListener('change', updateTableDisplay);
+                
+                const label = document.createElement('label');
+                label.htmlFor = `col_${col}`;
+                label.textContent = col;
+                
+                div.appendChild(checkbox);
+                div.appendChild(label);
+                container.appendChild(div);
+            });
+            
+            columnOrder = orderedColumns;
+        }
+        
+        function executeABCAnalysis() {
+            filteredData = [...rawData];
+            
+            // 階層フィルターを適用
+            const divisionValues = getSelectedValues('filterDivision');
+            if (divisionValues.length > 0) {
+                filteredData = filteredData.filter(row => divisionValues.includes(row['ディビジョン']));
+            }
+            
+            const categoryValues = getSelectedValues('filterCategory');
+            if (categoryValues.length > 0) {
+                filteredData = filteredData.filter(row => categoryValues.includes(row['カテゴリー']));
+            }
+            
+            const subCategoryValues = getSelectedValues('filterSubCategory');
+            if (subCategoryValues.length > 0) {
+                filteredData = filteredData.filter(row => subCategoryValues.includes(row['サブカテゴリー']));
+            }
+            
+            const segmentValues = getSelectedValues('filterSegment');
+            if (segmentValues.length > 0) {
+                filteredData = filteredData.filter(row => segmentValues.includes(row['セグメント']));
+            }
+            
+            const subSegmentValues = getSelectedValues('filterSubSegment');
+            if (subSegmentValues.length > 0) {
+                filteredData = filteredData.filter(row => subSegmentValues.includes(row['サブセグメント']));
+            }
+            
+            if (filteredData.length === 0) {
+                alert('フィルター条件に該当するデータがありません。');
+                return;
+            }
+            
+            // ABC分析基準値を取得
+            const salesCriteriaA = parseFloat(document.getElementById('salesCriteriaA').value) || 70;
+            const salesCriteriaB = parseFloat(document.getElementById('salesCriteriaB').value) || 20;
+            const repeatCriteriaA = parseFloat(document.getElementById('repeatCriteriaA').value) || 20;
+            const repeatCriteriaB = parseFloat(document.getElementById('repeatCriteriaB').value) || 10;
+            
+            // ABC判定を実行
+            performABCAnalysis(salesCriteriaA, salesCriteriaB, repeatCriteriaA, repeatCriteriaB);
+            
+            // 実行後フィルターを初期化
+            initializePostFilters();
+            
+            // 結果を表示
+            displayData = [...analysisResults];
+            currentSortColumn = '●売上金額(円)';
+            currentSortOrder = 'desc';
+            sortData();
+            updateTableDisplay();
+            
+            document.getElementById('resultSection').classList.remove('hidden');
+        }
+        
+        function performABCAnalysis(salesA, salesB, repeatA, repeatB) {
+            analysisResults = filteredData.map(row => ({...row}));
+            
+            // 売上金額でソート（降順）
+            const salesSorted = [...analysisResults].sort((a, b) => {
+                const valA = parseFloat(a['●売上金額(円)']) || 0;
+                const valB = parseFloat(b['●売上金額(円)']) || 0;
+                return valB - valA;
+            });
+            
+            // 売上金額ABC
+            performCumulativeABC(salesSorted, '●売上金額(円)', '売上金額ABC', salesA, salesB);
+            
+            // 売上金額/1店でソート（降順）
+            const salesPerStoreSorted = [...analysisResults].sort((a, b) => {
+                const valA = parseFloat(a['●売上金額/1店']) || 0;
+                const valB = parseFloat(b['●売上金額/1店']) || 0;
+                return valB - valA;
+            });
+            
+            // 売上金額/1店ABC
+            performCumulativeABC(salesPerStoreSorted, '●売上金額/1店', '売上金額/1店ABC', salesA, salesB);
+            
+            // 推定売上金額/1店でソート（降順）
+            const estimatedSorted = [...analysisResults].sort((a, b) => {
+                const valA = parseFloat(a['導入時推定売上金額/1店']) || 0;
+                const valB = parseFloat(b['導入時推定売上金額/1店']) || 0;
+                return valB - valA;
+            });
+            
+            // 推定売上金額/1店ABC
+            performCumulativeABC(estimatedSorted, '導入時推定売上金額/1店', '推定売上金額/1店ABC', salesA, salesB);
+            
+            // リピート率ABC（独立判定） - ●リピート率を使用
+            analysisResults.forEach(row => {
+                // ●リピート率の値を取得（0.28のような値を28%として扱う）
+                const repeatRate = parseFloat(row['●リピート率']) * 100;
+                if (isNaN(repeatRate) || repeatRate === null || repeatRate === undefined) {
+                    row['リピート率ABC'] = '';
+                } else if (repeatRate >= repeatA) {
+                    row['リピート率ABC'] = 'A';
+                } else if (repeatRate >= repeatB) {
+                    row['リピート率ABC'] = 'B';
+                } else {
+                    row['リピート率ABC'] = 'C';
+                }
+            });
+        }
+        
+        function performCumulativeABC(sortedData, valueColumn, abcColumn, criteriaA, criteriaB) {
+            const total = sortedData.reduce((sum, row) => {
+                const val = parseFloat(row[valueColumn]) || 0;
+                return sum + val;
+            }, 0);
+            
+            if (total === 0) {
+                sortedData.forEach(row => {
+                    row[abcColumn] = '';
+                });
+                return;
+            }
+            
+            let cumulativeSum = 0;
+            const thresholdA = total * criteriaA / 100;
+            const thresholdB = total * (criteriaA + criteriaB) / 100;
+            
+            sortedData.forEach(row => {
+                const value = parseFloat(row[valueColumn]) || 0;
+                
+                if (value === 0 || isNaN(value)) {
+                    row[abcColumn] = '';
+                } else {
+                    cumulativeSum += value;
+                    
+                    if (cumulativeSum <= thresholdA) {
+                        row[abcColumn] = 'A';
+                    } else if (cumulativeSum <= thresholdB) {
+                        row[abcColumn] = 'B';
+                    } else {
+                        row[abcColumn] = 'C';
+                    }
+                }
+            });
+            
+            // 元のanalysisResultsに反映
+            analysisResults.forEach(result => {
+                const matchingRow = sortedData.find(row => row === result);
+                if (matchingRow) {
+                    result[abcColumn] = matchingRow[abcColumn];
+                }
+            });
+        }
+        
+        function initializePostFilters() {
+            // カテゴリー階層のフィルターは分析結果全体から取得
+            populatePostFilter('postFilterCategory', 'カテゴリー', analysisResults);
+            populatePostFilter('postFilterSubCategory', 'サブカテゴリー', analysisResults);
+            populatePostFilter('postFilterSegment', 'セグメント', analysisResults);
+            populatePostFilter('postFilterSubSegment', 'サブセグメント', analysisResults);
+            
+            // メーカー名とブランドは階層フィルターで絞り込まれたデータから取得
+            populatePostFilter('postFilterMaker', 'メーカー名', analysisResults);
+            populatePostFilter('postFilterBrand', 'ブランド', analysisResults);
+            populatePostFilter('postFilterTeiban', '定番', analysisResults);
+            populatePostFilter('postFilterSuitei', '推定値算出可否', analysisResults);
+            
+            // 階層フィルターのイベント設定
+            document.getElementById('postFilterCategory').addEventListener('change', () => updatePostHierarchyFilters('category'));
+            document.getElementById('postFilterSubCategory').addEventListener('change', () => updatePostHierarchyFilters('subCategory'));
+            document.getElementById('postFilterSegment').addEventListener('change', () => updatePostHierarchyFilters('segment'));
+        }
+        
+        function populatePostFilter(selectId, columnName, data) {
+            const select = document.getElementById(selectId);
+            const values = [...new Set(data.map(row => row[columnName]).filter(v => v))].sort();
+            
+            select.innerHTML = '';
+            values.forEach(value => {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = value;
+                select.appendChild(option);
+            });
+        }
+        
+        function updatePostHierarchyFilters(level) {
+            let filteredForHierarchy = [...analysisResults];
+            
+            // 常に上位階層から順番にフィルタリング
+            const categoryValues = getSelectedValues('postFilterCategory');
+            if (categoryValues.length > 0) {
+                filteredForHierarchy = filteredForHierarchy.filter(row => 
+                    categoryValues.includes(row['カテゴリー']));
+            }
+            
+            const subCategoryValues = getSelectedValues('postFilterSubCategory');
+            if (subCategoryValues.length > 0) {
+                filteredForHierarchy = filteredForHierarchy.filter(row => 
+                    subCategoryValues.includes(row['サブカテゴリー']));
+            }
+            
+            const segmentValues = getSelectedValues('postFilterSegment');
+            if (segmentValues.length > 0) {
+                filteredForHierarchy = filteredForHierarchy.filter(row => 
+                    segmentValues.includes(row['セグメント']));
+            }
+            
+            // 変更されたレベル以下の階層のフィルターを更新
+            if (level === 'category') {
+                // カテゴリーでフィルタリングされたデータで下位を更新
+                let categoryFiltered = [...analysisResults];
+                if (categoryValues.length > 0) {
+                    categoryFiltered = categoryFiltered.filter(row => 
+                        categoryValues.includes(row['カテゴリー']));
+                }
+                updateFilterOptions('postFilterSubCategory', 'サブカテゴリー', categoryFiltered);
+                updateFilterOptions('postFilterSegment', 'セグメント', categoryFiltered);
+                updateFilterOptions('postFilterSubSegment', 'サブセグメント', categoryFiltered);
+            } else if (level === 'subCategory') {
+                // サブカテゴリーでフィルタリングされたデータで下位を更新
+                let subCategoryFiltered = [...analysisResults];
+                if (categoryValues.length > 0) {
+                    subCategoryFiltered = subCategoryFiltered.filter(row => 
+                        categoryValues.includes(row['カテゴリー']));
+                }
+                if (subCategoryValues.length > 0) {
+                    subCategoryFiltered = subCategoryFiltered.filter(row => 
+                        subCategoryValues.includes(row['サブカテゴリー']));
+                }
+                updateFilterOptions('postFilterSegment', 'セグメント', subCategoryFiltered);
+                updateFilterOptions('postFilterSubSegment', 'サブセグメント', subCategoryFiltered);
+            } else if (level === 'segment') {
+                // セグメントでフィルタリングされたデータで下位を更新
+                let segmentFiltered = [...analysisResults];
+                if (categoryValues.length > 0) {
+                    segmentFiltered = segmentFiltered.filter(row => 
+                        categoryValues.includes(row['カテゴリー']));
+                }
+                if (subCategoryValues.length > 0) {
+                    segmentFiltered = segmentFiltered.filter(row => 
+                        subCategoryValues.includes(row['サブカテゴリー']));
+                }
+                if (segmentValues.length > 0) {
+                    segmentFiltered = segmentFiltered.filter(row => 
+                        segmentValues.includes(row['セグメント']));
+                }
+                updateFilterOptions('postFilterSubSegment', 'サブセグメント', segmentFiltered);
+            }
+            
+            applyPostFilters();
+        }
+        
+        function applyPostFilters() {
+            displayData = [...analysisResults];
+            
+            // 各フィルターを適用
+            const filters = [
+                { id: 'postFilterCategory', column: 'カテゴリー' },
+                { id: 'postFilterSubCategory', column: 'サブカテゴリー' },
+                { id: 'postFilterSegment', column: 'セグメント' },
+                { id: 'postFilterSubSegment', column: 'サブセグメント' },
+                { id: 'postFilterMaker', column: 'メーカー名' },
+                { id: 'postFilterBrand', column: 'ブランド' },
+                { id: 'postFilterTeiban', column: '定番' },
+                { id: 'postFilterSuitei', column: '推定値算出可否' }
+            ];
+            
+            filters.forEach(filter => {
+                const values = getSelectedValues(filter.id);
+                if (values.length > 0) {
+                    displayData = displayData.filter(row => values.includes(row[filter.column]));
+                }
+            });
+            
+            sortData();
+            updateTableDisplay();
+        }
+        
+        function sortData() {
+            if (!currentSortColumn) return;
+            
+            displayData.sort((a, b) => {
+                let valA = a[currentSortColumn];
+                let valB = b[currentSortColumn];
+                
+                // 数値として比較を試みる
+                const numA = parseFloat(valA);
+                const numB = parseFloat(valB);
+                
+                if (!isNaN(numA) && !isNaN(numB)) {
+                    valA = numA;
+                    valB = numB;
+                } else {
+                    // テキストとして比較
+                    valA = valA ? valA.toString() : '';
+                    valB = valB ? valB.toString() : '';
+                }
+                
+                if (currentSortOrder === 'asc') {
+                    return valA < valB ? -1 : valA > valB ? 1 : 0;
+                } else {
+                    return valA > valB ? -1 : valA < valB ? 1 : 0;
+                }
+            });
+        }
+        
+        function updateTableDisplay() {
+            const container = document.getElementById('tableContainer');
+            const selectedColumns = getSelectedColumns();
+            
+            if (selectedColumns.length === 0) {
+                container.innerHTML = '<p>表示する列を選択してください。</p>';
+                return;
+            }
+            
+            // 固定列幅（サブカテゴリー表示時の幅に統一）
+            const fixedWidth = 120; // すべての列を120pxに統一
+            const tableWidth = selectedColumns.length * fixedWidth; // テーブル全体の幅を計算
+            
+            let html = `<table id="dataTable" style="width: ${tableWidth}px; table-layout: fixed;"><thead><tr>`;
+            
+            // ヘッダー行
+            selectedColumns.forEach(col => {
+                const sortIcon = currentSortColumn === col ? 
+                    (currentSortOrder === 'asc' ? '▲' : '▼') : '⇅';
+                const sortClass = currentSortColumn === col ? 
+                    (currentSortOrder === 'asc' ? 'sort-asc' : 'sort-desc') : '';
+                
+                html += `<th class="sortable ${sortClass}" data-column="${col}" 
+                         style="width: ${fixedWidth}px !important; min-width: ${fixedWidth}px !important; max-width: ${fixedWidth}px !important;" draggable="true">
+                         <span class="sort-icon">${sortIcon}</span><div class="text-content">${col}</div></th>`;
+            });
+            
+            html += '</tr></thead><tbody>';
+            
+            // データ行
+            displayData.forEach(row => {
+                html += '<tr>';
+                selectedColumns.forEach(col => {
+                    let value = row[col];
+                    let cellClass = '';
+                    let cellStyle = `width: ${fixedWidth}px !important; min-width: ${fixedWidth}px !important; max-width: ${fixedWidth}px !important;`;
+                    
+                    // ABC列の色分けと中央寄せ
+                    if (col.endsWith('ABC')) {
+                        cellStyle += ' text-align: center;';
+                        if (value === 'A') cellClass = 'abc-rank-a';
+                        else if (value === 'B') cellClass = 'abc-rank-b';
+                        else if (value === 'C') cellClass = 'abc-rank-c';
+                    } else if (col === 'カテゴリー' || col === 'サブカテゴリー' || col === 'セグメント' || 
+                             col === 'サブセグメント' || col === 'JAN' || col === '商品名' || 
+                             col === '規格' || col === 'メーカー名' || col === 'ブランド' || 
+                             col === '発単' || col === '季節' || col === 'マスタ登録' || 
+                             col === '定番' || col === '推定値算出可否' || col === 'ディビジョン' ||
+                             col === '最大顧客年代層' || col === '最大ライフステージ層') {
+                        // テキスト系の列は左寄せ
+                        cellStyle += ' text-align: left;';
+                    } else {
+                        // 数値系の列は右寄せ（幅・高さ・奥行なども含む）
+                        cellStyle += ' text-align: right;';
+                    }
+                    
+                    // 数値フォーマット
+                    if (value !== null && value !== undefined && value !== '') {
+                        if (col === '●リピート率' || col === '●バスケット出現率') {
+                            // ●リピート率と●バスケット出現率は0.28のような値を28%として表示
+                            const num = parseFloat(value) * 100;
+                            if (!isNaN(num)) {
+                                value = num.toFixed(1) + '%';
+                            }
+                        } else if (col === 'リピート率' || col === 'バスケット出現率') {
+                            const num = parseFloat(value);
+                            if (!isNaN(num)) {
+                                value = num.toFixed(1) + '%';
+                            }
+                        } else if (col === '●1回あたり点数' || col === '●PI値') {
+                            const num = parseFloat(value);
+                            if (!isNaN(num)) {
+                                value = num.toFixed(2);
+                            }
+                        } else if (col.includes('率') || col.includes('PI値') || col.includes('指数') || col === '安全係数') {
+                            const num = parseFloat(value);
+                            if (!isNaN(num)) {
+                                value = num.toFixed(2);
+                            }
+                        } else if (col.includes('金額') || col.includes('数量') || col.includes('店舗数') || 
+                                 col.includes('客数') || col.includes('在庫') || col === '●売上数量' || 
+                                 col === '●売上数量/1店' || col === '幅' || col === '高さ' || col === '奥行' ||
+                                 col === '平均単価' || col === '市場平均単価' || col === '【東海】数量PI値順位') {
+                            const num = parseFloat(value);
+                            if (!isNaN(num)) {
+                                // 幅・高さ・奥行は小数点以下も保持
+                                if (col === '幅' || col === '高さ' || col === '奥行') {
+                                    value = num.toFixed(1);
+                                } else {
+                                    value = Math.round(num).toLocaleString();
+                                }
+                            }
+                        }
+                    }
+                    
+                    if (value === null || value === undefined) {
+                        value = '';
+                    }
+                    
+                    // text-contentのスタイル設定
+                    let textStyle = '';
+                    if (cellStyle.includes('text-align: center')) {
+                        textStyle = ' style="display: inline-block;"';
+                    } else if (cellStyle.includes('text-align: right')) {
+                        textStyle = ' style="display: inline-block;"';
+                    }
+                    
+                    html += `<td class="${cellClass}" style="${cellStyle}">
+                            <span class="text-content"${textStyle}>${value}</span></td>`;
+                });
+                html += '</tr>';
+            });
+            
+            html += '</tbody></table>';
+            container.innerHTML = html;
+            
+            // イベントリスナーの設定
+            setupTableEventListeners();
+            
+            // テキスト自動縮小を適用
+            requestAnimationFrame(() => applyTextScaling());
+        }
+        
+        function getSelectedColumns() {
+            const checkboxes = document.querySelectorAll('#columnCheckboxes input:checked');
+            const selected = Array.from(checkboxes).map(cb => cb.value);
+            
+            // columnOrderの順序で並び替え
+            return columnOrder.filter(col => selected.includes(col));
+        }
+        
+        function setupTableEventListeners() {
+            // ソート機能
+            document.querySelectorAll('th.sortable').forEach(th => {
+                th.addEventListener('click', function(e) {
+                    // ドラッグ中は無視
+                    if (this.classList.contains('dragging')) {
+                        return;
+                    }
+                    
+                    const column = this.dataset.column;
+                    
+                    if (currentSortColumn === column) {
+                        if (currentSortOrder === 'desc') {
+                            currentSortOrder = 'asc';
+                        } else if (currentSortOrder === 'asc') {
+                            currentSortColumn = null;
+                            currentSortOrder = null;
+                        } else {
+                            currentSortOrder = 'desc';
+                        }
+                    } else {
+                        currentSortColumn = column;
+                        currentSortOrder = 'desc';
+                    }
+                    
+                    sortData();
+                    updateTableDisplay();
+                });
+            });
+            
+            // ドラッグ&ドロップ
+            let draggedElement = null;
+            let draggedColumn = null;
+            
+            document.querySelectorAll('th[draggable="true"]').forEach(th => {
+                th.addEventListener('dragstart', function(e) {
+                    draggedElement = this;
+                    draggedColumn = this.dataset.column;
+                    this.classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                });
+                
+                th.addEventListener('dragover', function(e) {
+                    if (e.preventDefault) {
+                        e.preventDefault();
+                    }
+                    e.dataTransfer.dropEffect = 'move';
+                    return false;
+                });
+                
+                th.addEventListener('dragenter', function(e) {
+                    if (this !== draggedElement) {
+                        this.classList.add('drag-over');
+                    }
+                });
+                
+                th.addEventListener('dragleave', function(e) {
+                    this.classList.remove('drag-over');
+                });
+                
+                th.addEventListener('drop', function(e) {
+                    if (e.stopPropagation) {
+                        e.stopPropagation();
+                    }
+                    
+                    const dropColumn = this.dataset.column;
+                    
+                    if (draggedColumn !== dropColumn) {
+                        const dragIndex = columnOrder.indexOf(draggedColumn);
+                        const dropIndex = columnOrder.indexOf(dropColumn);
+                        
+                        if (dragIndex !== -1 && dropIndex !== -1) {
+                            columnOrder.splice(dragIndex, 1);
+                            columnOrder.splice(dropIndex, 0, draggedColumn);
+                            updateTableDisplay();
+                        }
+                    }
+                    
+                    return false;
+                });
+                
+                th.addEventListener('dragend', function(e) {
+                    document.querySelectorAll('th').forEach(header => {
+                        header.classList.remove('dragging', 'drag-over');
+                    });
+                });
+            });
+        }
+        
+        function applyTextScaling() {
+            const cells = document.querySelectorAll('td'); // ヘッダー（th）は除外
+            const measurements = [];
+            const fixedWidth = 120; // 固定列幅
+            
+            // 読み取りフェーズ（データセルのみ）
+            cells.forEach(cell => {
+                const textContent = cell.querySelector('.text-content');
+                if (textContent) {
+                    const cellWidth = fixedWidth - 16; // データは16px（パディング）を引く
+                    const textWidth = textContent.scrollWidth;
+                    const textAlign = cell.style.textAlign || 'left';
+                    measurements.push({ textContent, cellWidth, textWidth, textAlign });
+                }
+            });
+            
+            // 書き込みフェーズ（データセルのみ）
+            requestAnimationFrame(() => {
+                measurements.forEach(({ textContent, cellWidth, textWidth, textAlign }) => {
+                    if (textWidth > cellWidth && cellWidth > 0) {
+                        const scale = Math.min(1, cellWidth / textWidth);
+                        textContent.style.transform = `scaleX(${scale})`;
+                        // 配置に応じてtransform-originを設定
+                        if (textAlign === 'center') {
+                            textContent.style.transformOrigin = 'center center';
+                        } else if (textAlign === 'right') {
+                            textContent.style.transformOrigin = 'right center';
+                        } else {
+                            textContent.style.transformOrigin = 'left center';
+                        }
+                    } else {
+                        textContent.style.transform = '';
+                        textContent.style.transformOrigin = 'left center';
+                    }
+                });
+            });
+        }
+        
+        function toggleHeaderFixed() {
+            const isFixed = document.getElementById('fixHeaderCheck').checked;
+            const table = document.getElementById('dataTable');
+            
+            if (table) {
+                const headers = table.querySelectorAll('th');
+                headers.forEach(th => {
+                    th.style.position = isFixed ? 'sticky' : 'relative';
+                    th.style.top = isFixed ? '0' : 'auto';
+                });
+                
+                // 列名固定の切り替え後にテキストスケーリングを再適用
+                requestAnimationFrame(() => applyTextScaling());
+            }
+        }
+        
+        function exportToExcel() {
+            const selectedColumns = getSelectedColumns();
+            
+            if (selectedColumns.length === 0 || displayData.length === 0) {
+                alert('エクスポートするデータがありません。');
+                return;
+            }
+            
+            // ワークブックを作成
+            const wb = XLSX.utils.book_new();
+            
+            // データを準備
+            const wsData = [];
+            
+            // ヘッダー行
+            wsData.push(selectedColumns);
+            
+            // データ行
+            displayData.forEach(row => {
+                const rowData = selectedColumns.map(col => {
+                    let value = row[col];
+                    
+                    // 数値フォーマット（Excelでは生の数値を保持）
+                    if (value !== null && value !== undefined && value !== '') {
+                        // パーセンテージ列は数値として保持（●リピート率と●バスケット出現率は100倍）
+                        if (col === '●リピート率' || col === '●バスケット出現率') {
+                            const num = parseFloat(value);
+                            if (!isNaN(num)) {
+                                return num * 100; // 0.28 → 28 として保存
+                            }
+                        } else if (col === 'リピート率' || col === 'バスケット出現率') {
+                            const num = parseFloat(value);
+                            if (!isNaN(num)) {
+                                return num;
+                            }
+                        }
+                        // その他の数値列
+                        const num = parseFloat(value);
+                        if (!isNaN(num)) {
+                            return num;
+                        }
+                    }
+                    
+                    return value === null || value === undefined ? '' : value;
+                });
+                wsData.push(rowData);
+            });
+            
+            // ワークシートを作成
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+            
+            // 固定列幅を設定（120pxを約17文字幅に換算）
+            const wscols = selectedColumns.map(col => ({
+                wch: 17
+            }));
+            ws['!cols'] = wscols;
+            
+            // セルのスタイルを設定（ABC列の色分け）
+            const range = XLSX.utils.decode_range(ws['!ref']);
+            for (let R = 1; R <= range.e.r; ++R) {
+                selectedColumns.forEach((col, C) => {
+                    if (col.endsWith('ABC')) {
+                        const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+                        const cell = ws[cellAddress];
+                        
+                        if (cell && cell.v) {
+                            if (!cell.s) cell.s = {};
+                            
+                            if (cell.v === 'A') {
+                                cell.s.fill = { fgColor: { rgb: "0070C0" } };
+                                cell.s.font = { color: { rgb: "FFFFFF" }, bold: true };
+                            } else if (cell.v === 'B') {
+                                cell.s.fill = { fgColor: { rgb: "97D2FF" } };
+                                cell.s.font = { bold: true };
+                            } else if (cell.v === 'C') {
+                                cell.s.fill = { fgColor: { rgb: "EFF27E" } };
+                                cell.s.font = { bold: true };
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // ワークブックに追加
+            XLSX.utils.book_append_sheet(wb, ws, 'ABC分析結果');
+            
+            // ファイルをダウンロード
+            const date = new Date();
+            const timestamp = date.getFullYear() + 
+                            ('0' + (date.getMonth() + 1)).slice(-2) + 
+                            ('0' + date.getDate()).slice(-2) + '_' +
+                            ('0' + date.getHours()).slice(-2) + 
+                            ('0' + date.getMinutes()).slice(-2);
+            
+            XLSX.writeFile(wb, `ABC分析結果_${timestamp}.xlsx`);
+        }
+    </script>
+</body>
+</html>
