@@ -1,0 +1,1375 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>年代・ライフステージ・来店距離分析ツール</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: "Hiragino Sans", "Yu Gothic", "Meiryo", "MS PGothic", sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 24px;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        /* スプラッシュスクリーン */
+        .splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1F5F8B 0%, #2C7FB8 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 20000;
+            animation: fadeOut 0.5s ease-out 2s forwards;
+        }
+        
+        @keyframes fadeOut {
+            to {
+                opacity: 0;
+                visibility: hidden;
+            }
+        }
+        
+        .splash-content {
+            text-align: center;
+        }
+        
+        .splash-title {
+            color: white;
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 40px;
+            opacity: 0;
+            animation: fadeInUp 0.6s ease-out 0.2s forwards;
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .chart-animation {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 8px;
+            height: 120px;
+            margin-bottom: 30px;
+        }
+        
+        .bar {
+            width: 20px;
+            background: white;
+            border-radius: 3px 3px 0 0;
+            opacity: 0.9;
+            animation: growBar 0.8s ease-out forwards;
+        }
+        
+        .bar:nth-child(1) {
+            height: 60px;
+            animation-delay: 0.3s;
+        }
+        
+        .bar:nth-child(2) {
+            height: 90px;
+            animation-delay: 0.4s;
+        }
+        
+        .bar:nth-child(3) {
+            height: 45px;
+            animation-delay: 0.5s;
+        }
+        
+        .bar:nth-child(4) {
+            height: 75px;
+            animation-delay: 0.6s;
+        }
+        
+        .bar:nth-child(5) {
+            height: 100px;
+            animation-delay: 0.7s;
+        }
+        
+        .bar:nth-child(6) {
+            height: 55px;
+            animation-delay: 0.8s;
+        }
+        
+        @keyframes growBar {
+            from {
+                transform: scaleY(0);
+                opacity: 0;
+            }
+            to {
+                transform: scaleY(1);
+                opacity: 0.9;
+            }
+        }
+        
+        .loading-text {
+            color: white;
+            font-size: 14px;
+            opacity: 0;
+            animation: fadeIn 0.5s ease-out 1.5s forwards;
+        }
+        
+        @keyframes fadeIn {
+            to {
+                opacity: 0.8;
+            }
+        }
+        
+        /* モーダル */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+        
+        .modal {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            max-width: 600px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        
+        .modal h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+        
+        .modal-content {
+            margin-bottom: 25px;
+            line-height: 1.8;
+            color: #555;
+        }
+        
+        .library-list {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+            border-left: 4px solid #1F5F8B;
+        }
+        
+        .library-list li {
+            margin: 8px 0;
+            color: #333;
+        }
+        
+        .security-info {
+            background: #e8f5e9;
+            padding: 12px;
+            border-radius: 4px;
+            margin: 15px 0;
+            border-left: 4px solid #4CAF50;
+            font-size: 14px;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: flex-end;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #1F5F8B;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #164563;
+        }
+        
+        .btn-secondary {
+            background: #ddd;
+            color: #333;
+        }
+        
+        .btn-secondary:hover {
+            background: #ccc;
+        }
+        
+        .loading-message {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #1F5F8B;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            background: #ffebee;
+            padding: 20px;
+            border-radius: 4px;
+            border-left: 4px solid #f44336;
+            color: #c62828;
+        }
+        
+        .upload-area {
+            border: 3px dashed #ccc;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .upload-area:hover {
+            border-color: #1F5F8B;
+            background: #f9f9f9;
+        }
+        
+        .upload-area.dragover {
+            border-color: #1F5F8B;
+            background: #e3f2fd;
+        }
+        
+        /* 階層スライサーセクション */
+        .hierarchy-slicers {
+            margin-bottom: 20px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+        }
+        
+        .hierarchy-slicers h3 {
+            color: #333;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+        
+        .slicers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .slicer-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .slicer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        
+        .slicer-group label {
+            font-weight: bold;
+            color: #555;
+            font-size: 13px;
+        }
+        
+        .clear-slicer-btn {
+            padding: 2px 8px;
+            background: #e0e0e0;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+            color: #666;
+        }
+        
+        .clear-slicer-btn:hover {
+            background: #d0d0d0;
+        }
+        
+        .slicer-group select {
+            padding: 6px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 12px;
+            min-height: 100px;
+            font-family: inherit;
+        }
+        
+        .slicer-group select:focus {
+            outline: none;
+            border-color: #1F5F8B;
+            box-shadow: 0 0 0 2px rgba(31, 95, 139, 0.1);
+        }
+        
+        /* フィルターセクション */
+        .filters {
+            margin-bottom: 20px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+        }
+        
+        .filter-group {
+            margin-bottom: 15px;
+        }
+        
+        .filter-group label {
+            font-weight: bold;
+            margin-right: 10px;
+            color: #555;
+            font-size: 14px;
+        }
+        
+        /* チェックボックスグループ */
+        .checkbox-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .checkbox-item input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+        
+        .checkbox-item label {
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: normal;
+        }
+        
+        /* パンくずリスト */
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        
+        .breadcrumb-item {
+            color: #1F5F8B;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+        
+        .breadcrumb-item.current {
+            color: #333;
+            cursor: default;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        
+        /* ボタン */
+        .drill-all-btn {
+            padding: 8px 16px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+        
+        .export-table-btn {
+            padding: 8px 16px;
+            background: #FF9800;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            margin-bottom: 15px;
+            margin-left: 10px;
+        }
+        
+        /* テーブル */
+        .table-container {
+            overflow-x: auto;
+            margin-bottom: 20px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        th, td {
+            padding: 8px;
+            text-align: right;
+            border: 1px solid #ddd;
+        }
+        
+        th {
+            background: #2B5797;
+            font-weight: bold;
+            color: white;
+            position: relative;
+        }
+        
+        th.sortable {
+            cursor: pointer;
+            user-select: none;
+            padding-right: 25px;
+        }
+        
+        th.sortable:hover {
+            background: #3d6ba8;
+        }
+        
+        th .sort-icon {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        th.sort-asc .sort-icon,
+        th.sort-desc .sort-icon {
+            color: white;
+        }
+        
+        th.draggable-header {
+            cursor: move;
+            user-select: none;
+            position: relative;
+        }
+        
+        th.draggable-header:hover {
+            background: #3d6ba8;
+        }
+        
+        th.dragging {
+            opacity: 0.5;
+            background: #1e3d5f;
+        }
+        
+        th.drag-over {
+            border-left: 3px solid #4CAF50;
+        }
+        
+        td.name-column {
+            text-align: left;
+            padding-left: 10px;
+        }
+        
+        .drill-btn {
+            padding: 4px 8px;
+            background: #1F5F8B;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="splashScreen" class="splash-screen">
+        <div class="splash-content">
+            <div class="splash-title">年代・ライフステージ・来店距離分析ツール</div>
+            <div class="chart-animation">
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+            </div>
+            <div class="loading-text">Loading...</div>
+        </div>
+    </div>
+    
+    <div id="confirmModal" class="modal-overlay hidden">
+        <div class="modal">
+            <h2>外部ライブラリの読み込み確認</h2>
+            <div class="modal-content">
+                <p>このツールを使用するには、以下のJavaScriptライブラリを外部から読み込む必要があります:</p>
+                
+                <div class="library-list">
+                    <ul>
+                        <li><strong>XLSX.js (v0.18.5)</strong> - Excelファイル処理用</li>
+                        <li><strong>html2canvas (v1.4.1)</strong> - 画像出力用</li>
+                    </ul>
+                </div>
+                
+                <div class="security-info">
+                    <strong>接続情報:</strong><br>
+                    ・接続先: https://cdnjs.cloudflare.com (Cloudflare公式CDN)<br>
+                    ・アップロードしたデータは外部に送信されません<br>
+                    ・すべての処理はブラウザ内で完結します
+                </div>
+                
+                <p style="color: #666; font-size: 13px; margin-top: 15px;">
+                    ※ライブラリは毎回のツール起動時に読み込まれ、ブラウザ内でのみ動作します。<br>
+                    ※本ツール内で利用されるCDN(Content Delivery Network)経由で提供される外部ライブラリについては、その安全性、可用性、正確性、およびツールの機能に与える影響を含め、一切の責任を負いません。
+                </p>
+            </div>
+            
+            <div class="modal-buttons">
+                <button class="btn btn-secondary" id="cancelBtn">キャンセル</button>
+                <button class="btn btn-primary" id="approveBtn">記載事項に同意してライブラリを読み込む</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="container">
+        <h1>年代・ライフステージ・来店距離分析ツール</h1>
+        
+        <div id="loadingMessage" class="loading-message hidden">
+            <div class="loading-spinner"></div>
+            <p>ライブラリを読み込んでいます...</p>
+        </div>
+        
+        <div id="errorMessage" class="error-message hidden"></div>
+        
+        <div id="mainApp" class="hidden">
+            <div class="upload-area" id="uploadArea">
+                <p>Excelファイルをドラッグ&ドロップ または クリックして選択</p>
+                <input type="file" id="fileInput" accept=".xlsx,.xls" style="display:none;">
+            </div>
+            
+            <div id="mainContent" class="hidden">
+                <!-- 階層スライサーセクション -->
+                <div class="hierarchy-slicers">
+                    <h3>商品分類フィルター（複数選択可）</h3>
+                    <div class="slicers-grid" id="slicersGrid"></div>
+                </div>
+                
+                <!-- 表示項目チェックボックス -->
+                <div class="filters">
+                    <div class="filter-group">
+                        <label>表示項目:</label>
+                        <div class="checkbox-group" id="columnCheckboxes"></div>
+                    </div>
+                </div>
+                
+                <div class="breadcrumb" id="breadcrumb"></div>
+                
+                <button class="drill-all-btn hidden" id="drillAllBtn">全体をドリルダウン</button>
+                <button class="export-table-btn" id="exportTableBtn">表を画像でダウンロード</button>
+                
+                <div class="table-container" id="tableContainer"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                document.getElementById('splashScreen').style.display = 'none';
+                document.getElementById('confirmModal').classList.remove('hidden');
+            }, 2500);
+        });
+        
+        const libraries = [
+            {
+                name: 'XLSX',
+                url: 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+                check: () => typeof XLSX !== 'undefined'
+            },
+            {
+                name: 'html2canvas',
+                url: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
+                check: () => typeof html2canvas !== 'undefined'
+            }
+        ];
+        
+        let librariesLoaded = false;
+        
+        document.getElementById('approveBtn').addEventListener('click', loadLibraries);
+        document.getElementById('cancelBtn').addEventListener('click', handleCancel);
+        
+        function loadLibraries() {
+            document.getElementById('confirmModal').classList.add('hidden');
+            document.getElementById('loadingMessage').classList.remove('hidden');
+            
+            const promises = libraries.map(lib => loadScript(lib));
+            
+            Promise.all(promises)
+                .then(() => {
+                    librariesLoaded = true;
+                    document.getElementById('loadingMessage').classList.add('hidden');
+                    document.getElementById('mainApp').classList.remove('hidden');
+                    initializeApp();
+                })
+                .catch(error => {
+                    document.getElementById('loadingMessage').classList.add('hidden');
+                    const errorMsg = document.getElementById('errorMessage');
+                    errorMsg.textContent = `ライブラリの読み込みに失敗しました: ${error.message}`;
+                    errorMsg.classList.remove('hidden');
+                });
+        }
+        
+        function loadScript(lib) {
+            return new Promise((resolve, reject) => {
+                if (lib.check()) {
+                    resolve();
+                    return;
+                }
+                
+                const script = document.createElement('script');
+                script.src = lib.url;
+                
+                script.onload = () => {
+                    if (lib.check()) {
+                        console.log(`✓ ${lib.name} loaded successfully`);
+                        resolve();
+                    } else {
+                        reject(new Error(`${lib.name} failed to initialize`));
+                    }
+                };
+                
+                script.onerror = () => {
+                    reject(new Error(`${lib.name} failed to load from CDN`));
+                };
+                
+                document.head.appendChild(script);
+            });
+        }
+        
+        function handleCancel() {
+            document.getElementById('confirmModal').classList.add('hidden');
+            const errorMsg = document.getElementById('errorMessage');
+            errorMsg.innerHTML = `
+                <strong>ライブラリの読み込みがキャンセルされました</strong><br>
+                このツールを使用するには、外部ライブラリの読み込みを承認する必要があります。<br>
+                ページを再読み込みして、再度お試しください。
+            `;
+            errorMsg.classList.remove('hidden');
+        }
+        
+        function initializeApp() {
+            let rawData = [];
+            let currentHierarchy = [];
+            let sortState = {column: null, direction: null};
+            let columnOrder = ['年代', 'ライフステージ', '来店距離'];
+            let visibleColumns = {
+                '年代': true,
+                'ライフステージ': true,
+                '来店距離': true
+            };
+            
+            // 階層スライサーの選択状態
+            let slicerSelections = {
+                'ディビジョン': [],
+                'ライン': [],
+                '部門': [],
+                'カテゴリー': [],
+                'サブカテゴリー': [],
+                'セグメント': [],
+                'サブセグメント': []
+            };
+            
+            const hierarchyLevels = ['ディビジョン', 'ライン', '部門', 'カテゴリー', 'サブカテゴリー', 'セグメント', 'サブセグメント'];
+            
+            const uploadArea = document.getElementById('uploadArea');
+            const fileInput = document.getElementById('fileInput');
+            
+            uploadArea.addEventListener('click', () => fileInput.click());
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+            uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                handleFile(e.dataTransfer.files[0]);
+            });
+            fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+            
+            function handleFile(file) {
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                        
+                        rawData = jsonData;
+                        initializeData();
+                    } catch (error) {
+                        alert('ファイルの読み込みに失敗しました: ' + error.message);
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            }
+            
+            function initializeData() {
+                document.getElementById('mainContent').classList.remove('hidden');
+                populateSlicers();
+                populateColumnCheckboxes();
+                updateView();
+            }
+            
+            function populateSlicers() {
+                const grid = document.getElementById('slicersGrid');
+                grid.innerHTML = hierarchyLevels.map(level => `
+                    <div class="slicer-group">
+                        <div class="slicer-header">
+                            <label>${level}</label>
+                            <button class="clear-slicer-btn" data-level="${level}">クリア</button>
+                        </div>
+                        <select id="slicer_${level}" multiple size="5"></select>
+                    </div>
+                `).join('');
+                
+                // スライサーの変更イベント設定
+                hierarchyLevels.forEach(level => {
+                    const select = document.getElementById(`slicer_${level}`);
+                    select.addEventListener('change', () => {
+                        slicerSelections[level] = Array.from(select.selectedOptions).map(opt => opt.value);
+                        updateSlicerCascade(level);
+                        updateView();
+                    });
+                });
+                
+                // クリアボタンのイベント設定
+                document.querySelectorAll('.clear-slicer-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const level = btn.dataset.level;
+                        const select = document.getElementById(`slicer_${level}`);
+                        select.selectedIndex = -1;
+                        slicerSelections[level] = [];
+                        updateSlicerCascade(level);
+                        updateView();
+                    });
+                });
+                
+                // 初回のオプション設定
+                updateSlicerOptions();
+            }
+            
+            function updateSlicerCascade(changedLevel) {
+                const changedIndex = hierarchyLevels.indexOf(changedLevel);
+                
+                // 変更された階層より下位の階層の選択をクリア
+                for (let i = changedIndex + 1; i < hierarchyLevels.length; i++) {
+                    const level = hierarchyLevels[i];
+                    slicerSelections[level] = [];
+                    const select = document.getElementById(`slicer_${level}`);
+                    select.selectedIndex = -1;
+                }
+                
+                // オプションを更新
+                updateSlicerOptions();
+            }
+            
+            function updateSlicerOptions() {
+                hierarchyLevels.forEach((level, index) => {
+                    const select = document.getElementById(`slicer_${level}`);
+                    
+                    // 上位階層のフィルター適用
+                    let filteredData = rawData.filter(row => row[level] && row[level] !== '-');
+                    
+                    // 上位階層の選択に基づいてフィルタリング
+                    for (let i = 0; i < index; i++) {
+                        const upperLevel = hierarchyLevels[i];
+                        if (slicerSelections[upperLevel].length > 0) {
+                            filteredData = filteredData.filter(row => 
+                                slicerSelections[upperLevel].includes(row[upperLevel])
+                            );
+                        }
+                    }
+                    
+                    // ユニーク値を取得してソート
+                    const uniqueValues = [...new Set(filteredData.map(row => row[level]))].sort();
+                    
+                    // 現在の選択を保持
+                    const currentSelection = slicerSelections[level];
+                    
+                    // オプションを更新
+                    select.innerHTML = uniqueValues.map(value => {
+                        const isSelected = currentSelection.includes(value);
+                        return `<option value="${value}" ${isSelected ? 'selected' : ''}>${value}</option>`;
+                    }).join('');
+                });
+            }
+            
+            function populateColumnCheckboxes() {
+                const container = document.getElementById('columnCheckboxes');
+                container.innerHTML = columnOrder.map(col => `
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="col_${col}" ${visibleColumns[col] ? 'checked' : ''}>
+                        <label for="col_${col}">${col}</label>
+                    </div>
+                `).join('');
+                
+                columnOrder.forEach(col => {
+                    document.getElementById(`col_${col}`).addEventListener('change', (e) => {
+                        visibleColumns[col] = e.target.checked;
+                        updateView();
+                    });
+                });
+            }
+            
+            function getCurrentData() {
+                let data = rawData;
+                const currentLevel = currentHierarchy.length;
+                
+                // スライサーフィルターを適用
+                hierarchyLevels.forEach(level => {
+                    if (slicerSelections[level].length > 0) {
+                        data = data.filter(row => slicerSelections[level].includes(row[level]));
+                    }
+                });
+                
+                // 現在の階層レベルに応じてフィルタリング
+                currentHierarchy.forEach((value, index) => {
+                    const level = hierarchyLevels[index];
+                    
+                    if (value !== '*ALL*') {
+                        // 特定の値でフィルタリング（*ALL*でない場合のみ）
+                        data = data.filter(row => row[level] === value);
+                    }
+                });
+                
+                // 現在の階層レベルのデータを取得
+                if (currentLevel < hierarchyLevels.length) {
+                    const nextLevel = hierarchyLevels[currentLevel];
+                    
+                    if (currentLevel > 0 && currentHierarchy[currentLevel - 1] === '*ALL*') {
+                        // 前の階層が*ALL*の場合、次のレベルが'-'でないものを取得
+                        data = data.filter(row => row[nextLevel] && row[nextLevel] !== '-');
+                        
+                        // さらに次のレベルが'-'のものだけを取得
+                        if (currentLevel < hierarchyLevels.length - 1) {
+                            const nextNextLevel = hierarchyLevels[currentLevel + 1];
+                            data = data.filter(row => row[nextNextLevel] === '-');
+                        }
+                    } else {
+                        // 通常のドリルダウン:次のレベルが'-'でないものを取得
+                        data = data.filter(row => row[nextLevel] && row[nextLevel] !== '-');
+                        
+                        // さらに次のレベルが'-'のものだけを取得
+                        if (currentLevel < hierarchyLevels.length - 1) {
+                            const nextNextLevel = hierarchyLevels[currentLevel + 1];
+                            data = data.filter(row => row[nextNextLevel] === '-');
+                        }
+                    }
+                }
+                
+                return data;
+            }
+            
+            function updateView() {
+                updateBreadcrumb();
+                
+                const currentLevel = currentHierarchy.length;
+                
+                if (currentLevel < 6) {
+                    document.getElementById('drillAllBtn').classList.remove('hidden');
+                } else {
+                    document.getElementById('drillAllBtn').classList.add('hidden');
+                }
+                
+                updateTable();
+            }
+            
+            function updateBreadcrumb() {
+                const breadcrumb = document.getElementById('breadcrumb');
+                let html = '<span class="breadcrumb-item" data-level="-1">トップ</span>';
+                
+                currentHierarchy.forEach((item, index) => {
+                    const displayText = item === '*ALL*' ? '全体' : item;
+                    html += ' > <span class="breadcrumb-item' + 
+                            (index === currentHierarchy.length - 1 ? ' current' : '') + 
+                            '" data-level="' + index + '">' + displayText + '</span>';
+                });
+                
+                breadcrumb.innerHTML = html;
+                
+                breadcrumb.querySelectorAll('.breadcrumb-item:not(.current)').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const level = parseInt(item.dataset.level);
+                        currentHierarchy = currentHierarchy.slice(0, level + 1);
+                        sortState = {column: null, direction: null};
+                        updateView();
+                    });
+                });
+            }
+            
+            function getDisplayData(data) {
+                const currentLevel = currentHierarchy.length;
+                const nextLevel = hierarchyLevels[currentLevel];
+                const visibleCols = columnOrder.filter(col => visibleColumns[col]);
+                
+                // グループ化のキーを作成（階層 + 表示中の列）
+                const groupedData = {};
+                
+                data.forEach(row => {
+                    // グループ化のキーは、上位階層 + 現在の階層の値 + 表示中の列の値
+                    const keyParts = [];
+                    
+                    // 階層5・6では全上位階層を含める
+                    if (currentLevel >= 5) {
+                        for (let i = 0; i <= currentLevel; i++) {
+                            keyParts.push(row[hierarchyLevels[i]] || '');
+                        }
+                    } else {
+                        // それ以外の階層では現在の階層値のみ
+                        keyParts.push(row[nextLevel]);
+                    }
+                    
+                    visibleCols.forEach(col => {
+                        keyParts.push(row[col]);
+                    });
+                    const groupKey = keyParts.join('|');
+                    
+                    if (!groupedData[groupKey]) {
+                        groupedData[groupKey] = {
+                            [nextLevel]: row[nextLevel],
+                            hierarchy: {},
+                            columns: {},
+                            売上数量: 0,
+                            売上税抜金額: 0,
+                            POS客数: 0,
+                            ID客数: 0,
+                            // ID客数全体は各行で同じ値が重複しているため、最初の行の値を保持（足し算しない）
+                            ID客数全体: row['ID客数(全体)'] || 0
+                        };
+                        
+                        visibleCols.forEach(col => {
+                            groupedData[groupKey].columns[col] = row[col];
+                        });
+                        
+                        // 上位階層の情報を保存（セグメント・サブセグメント用）
+                        if (currentLevel === 5) { // セグメントレベル
+                            groupedData[groupKey].hierarchy['サブカテゴリー'] = row['サブカテゴリー'];
+                        } else if (currentLevel === 6) { // サブセグメントレベル
+                            groupedData[groupKey].hierarchy['サブカテゴリー'] = row['サブカテゴリー'];
+                            groupedData[groupKey].hierarchy['セグメント'] = row['セグメント'];
+                        }
+                    }
+                    
+                    // 集計
+                    groupedData[groupKey].売上数量 += row['合計 / 売上数量'] || 0;
+                    groupedData[groupKey].売上税抜金額 += row['合計 / 売上税抜金額(円)'] || 0;
+                    groupedData[groupKey].POS客数 += row['合計 / POS客数'] || 0;
+                    groupedData[groupKey].ID客数 += row['合計 / ID客数'] || 0;
+                });
+                
+                const displayData = Object.values(groupedData);
+                
+                // ソート処理
+                if (sortState.column) {
+                    displayData.sort((a, b) => {
+                        let aVal, bVal;
+                        
+                        if (sortState.column === nextLevel) {
+                            aVal = a[nextLevel];
+                            bVal = b[nextLevel];
+                        } else if (sortState.column.startsWith('hierarchy_')) {
+                            const hierCol = sortState.column.replace('hierarchy_', '');
+                            aVal = a.hierarchy[hierCol] || '';
+                            bVal = b.hierarchy[hierCol] || '';
+                        } else if (visibleCols.includes(sortState.column)) {
+                            aVal = a.columns[sortState.column];
+                            bVal = b.columns[sortState.column];
+                        } else {
+                            // 計算指標
+                            aVal = calculateMetric(a, sortState.column);
+                            bVal = calculateMetric(b, sortState.column);
+                        }
+                        
+                        if (typeof aVal === 'string') {
+                            return sortState.direction === 'asc' 
+                                ? aVal.localeCompare(bVal, 'ja')
+                                : bVal.localeCompare(aVal, 'ja');
+                        } else {
+                            return sortState.direction === 'asc' ? aVal - bVal : bVal - aVal;
+                        }
+                    });
+                }
+                
+                return displayData;
+            }
+            
+            function calculateMetric(item, metric) {
+                const 売上数量 = item.売上数量;
+                const 売上税抜金額 = item.売上税抜金額;
+                const POS客数 = item.POS客数;
+                const ID客数 = item.ID客数;
+                const ID客数全体 = item.ID客数全体;
+                
+                switch(metric) {
+                    case '売上高税抜金額': return 売上税抜金額 / 1000; // 千円単位に変換
+                    case 'ID客数': return ID客数;
+                    case 'POS客数': return POS客数;
+                    case '来店頻度': return ID客数 > 0 ? POS客数 / ID客数 : 0;
+                    case '1回あたり点数': return POS客数 > 0 ? 売上数量 / POS客数 : 0;
+                    case '1回あたり購入金額': return POS客数 > 0 ? 売上税抜金額 / POS客数 : 0;
+                    case '平均単価': return 売上数量 > 0 ? 売上税抜金額 / 売上数量 : 0;
+                    case '購入率': return ID客数全体 > 0 ? (ID客数 / ID客数全体) * 100 : 0;
+                    default: return 0;
+                }
+            }
+            
+            function updateTable() {
+                const data = getCurrentData();
+                const displayData = getDisplayData(data);
+                const currentLevel = currentHierarchy.length;
+                const nextLevel = hierarchyLevels[currentLevel];
+                const visibleCols = columnOrder.filter(col => visibleColumns[col]);
+                
+                let html = '<table><thead><tr>';
+                
+                // 階層レベルに応じてヘッダー列を追加
+                if (currentLevel === 5) {
+                    html += `<th class="sortable" data-column="hierarchy_サブカテゴリー">サブカテゴリー${getSortIcon('hierarchy_サブカテゴリー')}</th>`;
+                    html += `<th class="sortable" data-column="${nextLevel}">${nextLevel}${getSortIcon(nextLevel)}</th>`;
+                } else if (currentLevel === 6) {
+                    html += `<th class="sortable" data-column="hierarchy_サブカテゴリー">サブカテゴリー${getSortIcon('hierarchy_サブカテゴリー')}</th>`;
+                    html += `<th class="sortable" data-column="hierarchy_セグメント">セグメント${getSortIcon('hierarchy_セグメント')}</th>`;
+                    html += `<th class="sortable" data-column="${nextLevel}">${nextLevel}${getSortIcon(nextLevel)}</th>`;
+                } else {
+                    html += `<th class="sortable" data-column="${nextLevel}">${nextLevel}${getSortIcon(nextLevel)}</th>`;
+                }
+                
+                // 表示中の列のヘッダー
+                visibleCols.forEach(col => {
+                    html += `<th class="sortable draggable-header" draggable="true" data-column="${col}">
+                        ${col}${getSortIcon(col)}
+                    </th>`;
+                });
+                
+                // 指標列のヘッダー
+                const metrics = [
+                    {id: '売上高税抜金額', name: '売上高税抜金額(千円)'},
+                    {id: 'ID客数', name: 'ID客数'},
+                    {id: 'POS客数', name: 'POS客数'},
+                    {id: '来店頻度', name: '来店頻度'},
+                    {id: '1回あたり点数', name: '1回あたり点数'},
+                    {id: '1回あたり購入金額', name: '1回あたり購入金額(円)'},
+                    {id: '平均単価', name: '平均単価(円)'},
+                    {id: '購入率', name: '購入率(%)'}
+                ];
+                
+                metrics.forEach(metric => {
+                    html += `<th class="sortable" data-column="${metric.id}">
+                        ${metric.name}${getSortIcon(metric.id)}
+                    </th>`;
+                });
+                
+                html += '</tr></thead><tbody>';
+                
+                // データ行
+                displayData.forEach(item => {
+                    html += '<tr>';
+                    
+                    // 階層レベルに応じて分類名列を表示
+                    if (currentLevel === 5) {
+                        html += `<td class="name-column">${item.hierarchy['サブカテゴリー'] || ''}</td>`;
+                        if (currentLevel < 6) {
+                            html += `<td class="name-column">
+                                <button class="drill-btn" data-item="${item[nextLevel]}">▼</button>
+                                ${item[nextLevel]}
+                            </td>`;
+                        } else {
+                            html += `<td class="name-column">${item[nextLevel]}</td>`;
+                        }
+                    } else if (currentLevel === 6) {
+                        html += `<td class="name-column">${item.hierarchy['サブカテゴリー'] || ''}</td>`;
+                        html += `<td class="name-column">${item.hierarchy['セグメント'] || ''}</td>`;
+                        html += `<td class="name-column">${item[nextLevel]}</td>`;
+                    } else {
+                        if (currentLevel < 6) {
+                            html += `<td class="name-column">
+                                <button class="drill-btn" data-item="${item[nextLevel]}">▼</button>
+                                ${item[nextLevel]}
+                            </td>`;
+                        } else {
+                            html += `<td class="name-column">${item[nextLevel]}</td>`;
+                        }
+                    }
+                    
+                    // 表示中の列
+                    visibleCols.forEach(col => {
+                        html += `<td class="name-column">${item.columns[col]}</td>`;
+                    });
+                    
+                    // 指標列
+                    metrics.forEach(metric => {
+                        const value = calculateMetric(item, metric.id);
+                        let formattedValue;
+                        
+                        if (metric.id === '売上高税抜金額') {
+                            // 千円単位、小数点以下切り捨て
+                            formattedValue = Math.floor(value).toLocaleString();
+                        } else if (metric.id === 'ID客数' || metric.id === 'POS客数') {
+                            // 整数
+                            formattedValue = Math.round(value).toLocaleString();
+                        } else if (metric.id === '購入率') {
+                            // パーセンテージ、小数点2桁
+                            formattedValue = value.toFixed(2);
+                        } else if (metric.id === '来店頻度') {
+                            // 小数点2桁
+                            formattedValue = value.toFixed(2);
+                        } else if (metric.id === '1回あたり点数') {
+                            // 小数点2桁
+                            formattedValue = value.toFixed(2);
+                        } else if (metric.id === '1回あたり購入金額' || metric.id === '平均単価') {
+                            // 円単位、小数点以下切り捨て
+                            formattedValue = Math.floor(value).toLocaleString();
+                        } else {
+                            formattedValue = value.toFixed(2);
+                        }
+                        
+                        html += `<td>${formattedValue}</td>`;
+                    });
+                    
+                    html += '</tr>';
+                });
+                
+                html += '</tbody></table>';
+                
+                document.getElementById('tableContainer').innerHTML = html;
+                
+                setupTableInteractions();
+            }
+            
+            function getSortIcon(column) {
+                if (sortState.column === column) {
+                    if (sortState.direction === 'asc') {
+                        return '<span class="sort-icon">▲</span>';
+                    } else if (sortState.direction === 'desc') {
+                        return '<span class="sort-icon">▼</span>';
+                    }
+                }
+                return '<span class="sort-icon">⇅</span>';
+            }
+            
+            function setupTableInteractions() {
+                // ソート機能
+                document.querySelectorAll('.sortable').forEach(header => {
+                    header.addEventListener('click', (e) => {
+                        if (header.classList.contains('dragging')) {
+                            return;
+                        }
+                        
+                        const column = header.dataset.column;
+                        
+                        if (!sortState.column || sortState.column !== column) {
+                            sortState.column = column;
+                            sortState.direction = 'desc';
+                        } else if (sortState.direction === 'desc') {
+                            sortState.direction = 'asc';
+                        } else {
+                            sortState.column = null;
+                            sortState.direction = null;
+                        }
+                        
+                        updateView();
+                    });
+                });
+                
+                setupDragAndDrop();
+                
+                // ドリルダウンボタン
+                document.querySelectorAll('.drill-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        currentHierarchy.push(btn.dataset.item);
+                        sortState = {column: null, direction: null};
+                        updateView();
+                    });
+                });
+            }
+            
+            let draggedElement = null;
+            let draggedColumn = null;
+            
+            function setupDragAndDrop() {
+                const draggableHeaders = document.querySelectorAll('.draggable-header');
+                
+                draggableHeaders.forEach(header => {
+                    header.addEventListener('dragstart', handleDragStart);
+                    header.addEventListener('dragover', handleDragOver);
+                    header.addEventListener('drop', handleDrop);
+                    header.addEventListener('dragend', handleDragEnd);
+                    header.addEventListener('dragenter', handleDragEnter);
+                    header.addEventListener('dragleave', handleDragLeave);
+                });
+            }
+            
+            function handleDragStart(e) {
+                draggedElement = this;
+                draggedColumn = this.dataset.column;
+                this.classList.add('dragging');
+                e.dataTransfer.effectAllowed = 'move';
+            }
+            
+            function handleDragOver(e) {
+                if (e.preventDefault) {
+                    e.preventDefault();
+                }
+                e.dataTransfer.dropEffect = 'move';
+                return false;
+            }
+            
+            function handleDragEnter(e) {
+                if (this !== draggedElement) {
+                    this.classList.add('drag-over');
+                }
+            }
+            
+            function handleDragLeave(e) {
+                this.classList.remove('drag-over');
+            }
+            
+            function handleDrop(e) {
+                if (e.stopPropagation) {
+                    e.stopPropagation();
+                }
+                
+                const dropColumn = this.dataset.column;
+                
+                if (draggedColumn !== dropColumn) {
+                    const dragIndex = columnOrder.indexOf(draggedColumn);
+                    const dropIndex = columnOrder.indexOf(dropColumn);
+                    
+                    const [draggedCol] = columnOrder.splice(dragIndex, 1);
+                    columnOrder.splice(dropIndex, 0, draggedCol);
+                    
+                    updateView();
+                }
+                
+                return false;
+            }
+            
+            function handleDragEnd(e) {
+                document.querySelectorAll('.draggable-header').forEach(header => {
+                    header.classList.remove('dragging', 'drag-over');
+                });
+                draggedElement = null;
+                draggedColumn = null;
+            }
+            
+            document.getElementById('drillAllBtn').addEventListener('click', () => {
+                if (currentHierarchy.length < 6) {
+                    currentHierarchy.push('*ALL*');
+                    sortState = {column: null, direction: null};
+                    updateView();
+                }
+            });
+            
+            document.getElementById('exportTableBtn').addEventListener('click', () => {
+                const table = document.querySelector('#tableContainer table');
+                if (!table) {
+                    alert('エクスポートする表がありません');
+                    return;
+                }
+                
+                const clonedTable = table.cloneNode(true);
+                clonedTable.querySelectorAll('.sort-icon').forEach(icon => icon.remove());
+                clonedTable.querySelectorAll('.drill-btn').forEach(btn => btn.remove());
+                
+                const downloadContainer = document.createElement('div');
+                downloadContainer.style.position = 'absolute';
+                downloadContainer.style.left = '-9999px';
+                downloadContainer.style.top = '0';
+                downloadContainer.style.padding = '20px';
+                downloadContainer.style.backgroundColor = '#ffffff';
+                downloadContainer.appendChild(clonedTable);
+                document.body.appendChild(downloadContainer);
+                
+                setTimeout(() => {
+                    html2canvas(downloadContainer, {
+                        backgroundColor: '#ffffff',
+                        scale: 2,
+                        logging: false,
+                        useCORS: true
+                    }).then(canvas => {
+                        const link = document.createElement('a');
+                        link.download = '年代_ライフステージ_来店距離分析_' + new Date().toISOString().slice(0, 10) + '.png';
+                        link.href = canvas.toDataURL('image/png');
+                        link.click();
+                        document.body.removeChild(downloadContainer);
+                    }).catch(error => {
+                        console.error('画像生成エラー:', error);
+                        alert('画像の生成に失敗しました。');
+                        document.body.removeChild(downloadContainer);
+                    });
+                }, 200);
+            });
+        }
+    </script>
+</body>
+</html>
