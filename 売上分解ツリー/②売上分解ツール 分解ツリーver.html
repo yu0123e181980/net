@@ -1,0 +1,1436 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>売上分解表作成ツール</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: "Hiragino Sans", "Yu Gothic", "Meiryo", "MS PGothic", sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 24px;
+        }
+        
+        .upload-area {
+            border: 3px dashed #ccc;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .upload-area:hover {
+            border-color: #1F5F8B;
+            background: #f9f9f9;
+        }
+        
+        .upload-area.dragover {
+            border-color: #1F5F8B;
+            background: #e3f2fd;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .controls {
+            display: none;
+            margin-bottom: 30px;
+        }
+        
+        .controls.active {
+            display: block;
+        }
+        
+        .filters {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .filter-group label {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #555;
+            font-size: 14px;
+        }
+        
+        .filter-group select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .hierarchy-filters {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+        }
+        
+        .hierarchy-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .hierarchy-group label {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #555;
+            font-size: 14px;
+        }
+        
+        .hierarchy-group select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            background: white;
+            height: 150px;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #1F5F8B;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #164563;
+        }
+        
+        .btn-secondary {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #45a049;
+        }
+        
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .results {
+            display: none;
+            margin-top: 30px;
+        }
+        
+        .results.active {
+            display: block;
+        }
+        
+        .decomposition-chart {
+            background: white;
+            padding: 30px;
+            margin-bottom: 40px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            page-break-inside: avoid;
+        }
+        
+        .chart-title {
+            font-size: 14px;
+            font-weight: normal;
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ddd;
+            word-wrap: break-word;
+            line-height: 1.5;
+        }
+        
+        .tree-container {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 900px;
+            padding: 20px;
+        }
+        
+        .tree-container.dual {
+            justify-content: space-between;
+            gap: 20px;
+        }
+        
+        .tree-svg {
+            width: 100%;
+            height: 100%;
+            min-height: 900px;
+        }
+        
+        .tree-svg.dual {
+            width: 48%;
+            min-height: 900px;
+        }
+        
+        .tree-node-rect {
+            fill: white;
+            stroke: #333;
+            stroke-width: 2;
+        }
+        
+        .tree-node-rect.root {
+            fill: #e8f4f8;
+            stroke: #1F5F8B;
+            stroke-width: 2;
+        }
+        
+        .tree-line {
+            stroke: #333;
+            stroke-width: 2;
+            fill: none;
+        }
+        
+        .node-text {
+            font-family: "Hiragino Sans", "Yu Gothic", "Meiryo", "MS PGothic", sans-serif;
+            font-size: 14px;
+            color: #333;
+            text-align: center;
+        }
+        
+        .node-value-text {
+            font-family: "Hiragino Sans", "Yu Gothic", "Meiryo", "MS PGothic", sans-serif;
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            text-align: center;
+        }
+        
+        .node-ratio-text {
+            font-family: "Hiragino Sans", "Yu Gothic", "Meiryo", "MS PGothic", sans-serif;
+            font-size: 14px;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .ratio-negative {
+            color: #d32f2f;
+        }
+        
+        .ratio-positive {
+            color: #333;
+        }
+        
+        .purchase-rate-box {
+            position: absolute;
+            top: 20px;
+            left: 50px;
+            background: white;
+            border: 2px solid #333;
+            border-radius: 20px;
+            padding: 15px 25px;
+            min-width: 180px;
+            text-align: center;
+        }
+        
+        .purchase-rate-title {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .purchase-rate-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 3px;
+        }
+        
+        .purchase-rate-ratio {
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #1F5F8B;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            background: #ffebee;
+            padding: 20px;
+            border-radius: 4px;
+            border-left: 4px solid #f44336;
+            color: #c62828;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>売上分解表作成ツール</h1>
+        
+        <div class="upload-area" id="uploadArea">
+            <p style="margin-bottom: 10px; font-size: 16px; color: #333; font-weight: bold;">Excelファイルをドラッグ＆ドロップ</p>
+            <p style="font-size: 14px; color: #666; margin-bottom: 15px;">または</p>
+            <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                ファイルを選択
+            </button>
+            <input type="file" id="fileInput" class="file-input" accept=".xlsx,.xls">
+            <p style="margin-top: 15px; font-size: 12px; color: #999;">対応形式: Excel (.xlsx, .xls)</p>
+        </div>
+        
+        <div id="loading" class="loading" style="display: none;">
+            <div class="loading-spinner"></div>
+            <p>ファイルを読み込んでいます...</p>
+        </div>
+        
+        <div id="controls" class="controls">
+            <div class="filters">
+                <div class="filter-group">
+                    <label for="analysisBase">分析基準</label>
+                    <select id="analysisBase">
+                        <option value="">選択してください</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="typeClassification">タイプ分類</label>
+                    <select id="typeClassification">
+                        <option value="">全て</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="analysisLevel">分析粒度</label>
+                    <select id="analysisLevel">
+                        <option value="">選択してください</option>
+                        <option value="ディビジョン">ディビジョン</option>
+                        <option value="ライン">ライン</option>
+                        <option value="部門">部門</option>
+                        <option value="カテゴリー">カテゴリー</option>
+                        <option value="サブカテゴリー">サブカテゴリー</option>
+                        <option value="セグメント">セグメント</option>
+                        <option value="サブセグメント">サブセグメント</option>
+                    </select>
+                </div>
+                <div class="filter-group" style="justify-content: flex-end; padding-top: 20px;">
+                    <div class="checkbox-group">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
+                            <input type="checkbox" id="showPurchaseRate" checked>
+                            <span>購入率を表示</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
+                            <input type="checkbox" id="showDivision">
+                            <span>ディビジョン全体を表示</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="hierarchy-filters" id="hierarchyFilters"></div>
+            
+            <div class="button-group">
+                <button class="btn btn-primary" id="generateBtn">分解表を作成</button>
+                <button class="btn btn-secondary" id="downloadBtn" style="display: none;">画像をダウンロード</button>
+            </div>
+        </div>
+        
+        <div id="error" class="error-message" style="display: none;"></div>
+        
+        <div id="results" class="results"></div>
+    </div>
+    
+    <script>
+        let excelData = null;
+        const hierarchyLevels = ['ディビジョン', 'ライン', '部門', 'カテゴリー', 'サブカテゴリー', 'セグメント', 'サブセグメント'];
+        
+        // ファイルアップロード処理
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                loadExcelFile(file);
+            }
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                loadExcelFile(file);
+            }
+        });
+        
+        function loadExcelFile(file) {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('error').style.display = 'none';
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    excelData = XLSX.utils.sheet_to_json(firstSheet);
+                    
+                    console.log('読み込んだデータ:', excelData.length, '行');
+                    
+                    populateFilters();
+                    document.getElementById('controls').classList.add('active');
+                    document.getElementById('loading').style.display = 'none';
+                } catch (error) {
+                    console.error('ファイル読み込みエラー:', error);
+                    showError('ファイルの読み込みに失敗しました: ' + error.message);
+                    document.getElementById('loading').style.display = 'none';
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+        
+        function populateFilters() {
+            // 分析基準
+            const analysisBaseSet = new Set();
+            excelData.forEach(row => {
+                if (row['分析基準']) analysisBaseSet.add(row['分析基準']);
+            });
+            const analysisBaseSelect = document.getElementById('analysisBase');
+            analysisBaseSelect.innerHTML = '<option value="">選択してください</option>';
+            Array.from(analysisBaseSet).sort().forEach(value => {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = value;
+                analysisBaseSelect.appendChild(option);
+            });
+            
+            // タイプ分類
+            const typeClassificationSet = new Set();
+            excelData.forEach(row => {
+                if (row['タイプ分類']) typeClassificationSet.add(row['タイプ分類']);
+            });
+            const typeClassificationSelect = document.getElementById('typeClassification');
+            typeClassificationSelect.innerHTML = '<option value="">全て</option>';
+            Array.from(typeClassificationSet).sort().forEach(value => {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = value;
+                typeClassificationSelect.appendChild(option);
+            });
+            
+            // 分析基準変更時に階層フィルターを更新
+            analysisBaseSelect.addEventListener('change', updateHierarchyFilters);
+            document.getElementById('typeClassification').addEventListener('change', updateHierarchyFilters);
+            document.getElementById('analysisLevel').addEventListener('change', updateHierarchyFilters);
+        }
+        
+        function updateHierarchyFilters() {
+            const analysisBase = document.getElementById('analysisBase').value;
+            const analysisLevel = document.getElementById('analysisLevel').value;
+            const typeClassification = document.getElementById('typeClassification').value;
+            
+            if (!analysisBase || !analysisLevel) {
+                document.getElementById('hierarchyFilters').innerHTML = '';
+                return;
+            }
+            
+            const levelIndex = hierarchyLevels.indexOf(analysisLevel);
+            if (levelIndex === -1) return;
+            
+            const hierarchyFiltersDiv = document.getElementById('hierarchyFilters');
+            hierarchyFiltersDiv.innerHTML = '';
+            
+            // 選択した粒度までの階層フィルターを作成
+            for (let i = 0; i <= levelIndex; i++) {
+                const level = hierarchyLevels[i];
+                const group = document.createElement('div');
+                group.className = 'hierarchy-group';
+                
+                const label = document.createElement('label');
+                label.textContent = level;
+                label.setAttribute('for', `filter_${level}`);
+                
+                const select = document.createElement('select');
+                select.id = `filter_${level}`;
+                select.multiple = true;
+                
+                // フィルター値を取得
+                const values = getHierarchyValues(analysisBase, typeClassification, level, i);
+                values.forEach(value => {
+                    const option = document.createElement('option');
+                    option.value = value;
+                    option.textContent = value;
+                    select.appendChild(option);
+                });
+                
+                // 上位階層が変更されたら下位階層を更新
+                select.addEventListener('change', () => {
+                    for (let j = i + 1; j <= levelIndex; j++) {
+                        updateHierarchyFilterValues(analysisBase, typeClassification, j);
+                    }
+                });
+                
+                group.appendChild(label);
+                group.appendChild(select);
+                hierarchyFiltersDiv.appendChild(group);
+            }
+        }
+        
+        function getHierarchyValues(analysisBase, typeClassification, level, levelIndex) {
+            const valueSet = new Set();
+            
+            excelData.forEach(row => {
+                if (row['分析基準'] !== analysisBase) return;
+                if (typeClassification && row['タイプ分類'] !== typeClassification) return;
+                
+                // 上位階層の条件チェック
+                let matchesUpperLevels = true;
+                for (let i = 0; i < levelIndex; i++) {
+                    const upperLevel = hierarchyLevels[i];
+                    const upperSelect = document.getElementById(`filter_${upperLevel}`);
+                    if (upperSelect) {
+                        const selectedValues = Array.from(upperSelect.selectedOptions).map(opt => opt.value);
+                        if (selectedValues.length > 0 && !selectedValues.includes(String(row[upperLevel]))) {
+                            matchesUpperLevels = false;
+                            break;
+                        }
+                    }
+                }
+                
+                if (matchesUpperLevels && row[level] && row[level] !== '-') {
+                    valueSet.add(row[level]);
+                }
+            });
+            
+            return Array.from(valueSet).sort();
+        }
+        
+        function updateHierarchyFilterValues(analysisBase, typeClassification, levelIndex) {
+            const level = hierarchyLevels[levelIndex];
+            const select = document.getElementById(`filter_${level}`);
+            if (!select) return;
+            
+            const currentValues = Array.from(select.selectedOptions).map(opt => opt.value);
+            const values = getHierarchyValues(analysisBase, typeClassification, level, levelIndex);
+            
+            select.innerHTML = '';
+            values.forEach(value => {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = value;
+                if (currentValues.includes(value)) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            });
+        }
+        
+        document.getElementById('generateBtn').addEventListener('click', generateDecompositionCharts);
+        
+        function generateDecompositionCharts() {
+            const analysisBase = document.getElementById('analysisBase').value;
+            const analysisLevel = document.getElementById('analysisLevel').value;
+            
+            if (!analysisBase || !analysisLevel) {
+                alert('分析基準と分析粒度を選択してください');
+                return;
+            }
+            
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '';
+            
+            // 選択された階層の項目を取得
+            const selectedItems = getSelectedItems(analysisBase, analysisLevel);
+            
+            if (selectedItems.length === 0) {
+                alert('該当するデータがありません');
+                return;
+            }
+            
+            selectedItems.forEach(itemName => {
+                const chart = createDecompositionChart(analysisBase, analysisLevel, itemName);
+                if (chart) {
+                    resultsDiv.appendChild(chart);
+                }
+            });
+            
+            resultsDiv.classList.add('active');
+            document.getElementById('downloadBtn').style.display = 'inline-block';
+        }
+        
+        function getSelectedItems(analysisBase, analysisLevel) {
+            const typeClassification = document.getElementById('typeClassification').value;
+            const levelIndex = hierarchyLevels.indexOf(analysisLevel);
+            const itemSet = new Set();
+            
+            // 分析粒度のスライサーで選択された値を取得
+            const currentLevelSelect = document.getElementById(`filter_${analysisLevel}`);
+            const currentLevelSelectedValues = currentLevelSelect ? 
+                Array.from(currentLevelSelect.selectedOptions).map(opt => opt.value) : [];
+            
+            excelData.forEach(row => {
+                if (row['分析基準'] !== analysisBase) return;
+                if (typeClassification && row['タイプ分類'] !== typeClassification) return;
+                
+                // 上位階層の条件チェック
+                for (let i = 0; i < levelIndex; i++) {
+                    const upperLevel = hierarchyLevels[i];
+                    const upperSelect = document.getElementById(`filter_${upperLevel}`);
+                    if (upperSelect) {
+                        const selectedValues = Array.from(upperSelect.selectedOptions).map(opt => opt.value);
+                        if (selectedValues.length > 0 && !selectedValues.includes(String(row[upperLevel]))) {
+                            return;
+                        }
+                    }
+                }
+                
+                // 下位階層が全て"-"の行を抽出
+                let isTargetRow = true;
+                for (let i = levelIndex + 1; i < hierarchyLevels.length; i++) {
+                    if (row[hierarchyLevels[i]] && row[hierarchyLevels[i]] !== '-') {
+                        isTargetRow = false;
+                        break;
+                    }
+                }
+                
+                // 分析粒度の値が条件に合うかチェック
+                if (isTargetRow && row[analysisLevel] && row[analysisLevel] !== '-') {
+                    // 分析粒度で選択がある場合、選択された値のみを追加
+                    if (currentLevelSelectedValues.length > 0) {
+                        if (currentLevelSelectedValues.includes(String(row[analysisLevel]))) {
+                            itemSet.add(row[analysisLevel]);
+                        }
+                    } else {
+                        // 選択がない場合は全て追加
+                        itemSet.add(row[analysisLevel]);
+                    }
+                }
+            });
+            
+            return Array.from(itemSet).sort();
+        }
+        
+        function getHierarchicalTitle(analysisBase, analysisLevel, itemName) {
+            const levelIndex = hierarchyLevels.indexOf(analysisLevel);
+            const titleParts = [analysisBase];
+            
+            // 上位階層の選択値を取得
+            for (let i = 0; i < levelIndex; i++) {
+                const level = hierarchyLevels[i];
+                const select = document.getElementById(`filter_${level}`);
+                if (select) {
+                    const selectedValues = Array.from(select.selectedOptions).map(opt => opt.value);
+                    if (selectedValues.length > 0) {
+                        titleParts.push(...selectedValues);
+                    }
+                }
+            }
+            
+            titleParts.push(itemName);
+            return titleParts.join(' > ');
+        }
+        
+        function findTargetRow(analysisBase, analysisLevel, itemName, customerType) {
+            const typeClassification = document.getElementById('typeClassification').value;
+            const levelIndex = hierarchyLevels.indexOf(analysisLevel);
+            
+            const filteredData = excelData.filter(row => {
+                if (row['分析基準'] !== analysisBase) return false;
+                if (row[analysisLevel] !== itemName) return false;
+                if (row['顧客種類'] !== customerType) return false;
+                
+                // タイプ分類フィルター
+                if (typeClassification && row['タイプ分類'] !== typeClassification) return false;
+                
+                // 上位階層の条件
+                for (let i = 0; i < levelIndex; i++) {
+                    const upperLevel = hierarchyLevels[i];
+                    const upperSelect = document.getElementById(`filter_${upperLevel}`);
+                    if (upperSelect) {
+                        const selectedValues = Array.from(upperSelect.selectedOptions).map(opt => opt.value);
+                        if (selectedValues.length > 0 && !selectedValues.includes(String(row[upperLevel]))) {
+                            return false;
+                        }
+                    }
+                }
+                
+                // 下位階層が全て"-"であることを確認
+                for (let i = levelIndex + 1; i < hierarchyLevels.length; i++) {
+                    if (row[hierarchyLevels[i]] && row[hierarchyLevels[i]] !== '-') {
+                        return false;
+                    }
+                }
+                
+                return true;
+            });
+            
+            if (filteredData.length > 0) {
+                return filteredData[0];
+            }
+            
+            return null;
+        }
+        
+        function createDecompositionChart(analysisBase, analysisLevel, itemName) {
+            const memberRow = findTargetRow(analysisBase, analysisLevel, itemName, '会員');
+            const nonMemberRow = findTargetRow(analysisBase, analysisLevel, itemName, '非会員');
+            
+            if (!memberRow && !nonMemberRow) {
+                console.error('データが見つかりません:', itemName);
+                return null;
+            }
+            
+            const container = document.createElement('div');
+            container.className = 'decomposition-chart';
+            container.dataset.itemName = itemName;
+            
+            const title = getHierarchicalTitle(analysisBase, analysisLevel, itemName);
+            const showPurchaseRate = document.getElementById('showPurchaseRate').checked;
+            const showDivision = document.getElementById('showDivision').checked;
+            
+            const totalAmount = (memberRow ? memberRow['売上税抜金額(円)'] : 0) + (nonMemberRow ? nonMemberRow['売上税抜金額(円)'] : 0);
+            const totalAmountPrev = (memberRow ? memberRow['売上税抜金額(円)(前期)'] : 0) + (nonMemberRow ? nonMemberRow['売上税抜金額(円)(前期)'] : 0);
+            const totalAmountRatio = calculateRatio(totalAmount, totalAmountPrev);
+            
+            const totalPurchaseRate = memberRow ? memberRow['購入率'] * 100 : 0;
+            const totalPurchaseRatePrev = memberRow ? memberRow['購入率(前期)'] * 100 : 0;
+            const totalPurchaseRateRatio = calculateRatio(totalPurchaseRate, totalPurchaseRatePrev);
+            
+            const titleDiv = document.createElement('div');
+            titleDiv.className = 'chart-title';
+            titleDiv.textContent = title;
+            container.appendChild(titleDiv);
+            
+            const treeContainer = document.createElement('div');
+            treeContainer.className = 'tree-container';
+            
+            // ディビジョン全体を表示する場合
+            if (showDivision && analysisLevel !== 'ディビジョン') {
+                treeContainer.classList.add('dual');
+                
+                // ディビジョンのデータを取得
+                const divisionName = getDivisionForItem(analysisBase, analysisLevel, itemName);
+                if (divisionName) {
+                    const divisionMemberRow = findTargetRow(analysisBase, 'ディビジョン', divisionName, '会員');
+                    const divisionNonMemberRow = findTargetRow(analysisBase, 'ディビジョン', divisionName, '非会員');
+                    
+                    if (divisionMemberRow || divisionNonMemberRow) {
+                        const divisionAmount = (divisionMemberRow ? divisionMemberRow['売上税抜金額(円)'] : 0) + 
+                                              (divisionNonMemberRow ? divisionNonMemberRow['売上税抜金額(円)'] : 0);
+                        const divisionAmountPrev = (divisionMemberRow ? divisionMemberRow['売上税抜金額(円)(前期)'] : 0) + 
+                                                  (divisionNonMemberRow ? divisionNonMemberRow['売上税抜金額(円)(前期)'] : 0);
+                        const divisionAmountRatio = calculateRatio(divisionAmount, divisionAmountPrev);
+                        
+                        // 左側：ディビジョンツリー
+                        const divisionSvg = createSVGTree(divisionMemberRow, divisionNonMemberRow, divisionAmount, divisionAmountRatio, true);
+                        treeContainer.appendChild(divisionSvg);
+                    }
+                }
+                
+                // 右側：選択カテゴリーツリー
+                const itemSvg = createSVGTree(memberRow, nonMemberRow, totalAmount, totalAmountRatio, true);
+                treeContainer.appendChild(itemSvg);
+                
+            } else {
+                // 購入率ボックス（単一ツリー表示時のみ）
+                if (showPurchaseRate) {
+                    const purchaseRateBox = document.createElement('div');
+                    const ratioColor = totalPurchaseRateRatio < 100 ? '#d32f2f' : '#333';
+                    purchaseRateBox.style.cssText = `
+                        position: absolute;
+                        top: 80px;
+                        left: 200px;
+                        background: white;
+                        border: 2px solid #333;
+                        border-radius: 20px;
+                        padding: 15px 25px;
+                        min-width: 180px;
+                        text-align: center;
+                        box-sizing: border-box;
+                    `;
+                    purchaseRateBox.innerHTML = `
+                        <div style="font-size: 12px; color: #666; margin: 0 0 4px 0;">購入率</div>
+                        <div style="font-size: 20px; font-weight: bold; color: #333; margin: 0 0 2px 0;">${formatNumber(totalPurchaseRate, 1)}%</div>
+                        <div style="color: ${ratioColor}; font-size: 12px; font-weight: bold; margin: 0;">${formatRatio(totalPurchaseRateRatio)}</div>
+                    `;
+                    treeContainer.appendChild(purchaseRateBox);
+                }
+                
+                // SVGツリーを作成
+                const svg = createSVGTree(memberRow, nonMemberRow, totalAmount, totalAmountRatio, false);
+                treeContainer.appendChild(svg);
+            }
+            
+            container.appendChild(treeContainer);
+            return container;
+        }
+        
+        function getDivisionForItem(analysisBase, analysisLevel, itemName) {
+            const typeClassification = document.getElementById('typeClassification').value;
+            const levelIndex = hierarchyLevels.indexOf(analysisLevel);
+            
+            const row = excelData.find(r => {
+                if (r['分析基準'] !== analysisBase) return false;
+                if (r[analysisLevel] !== itemName) return false;
+                if (typeClassification && r['タイプ分類'] !== typeClassification) return false;
+                
+                // 上位階層の条件
+                for (let i = 0; i < levelIndex; i++) {
+                    const upperLevel = hierarchyLevels[i];
+                    const upperSelect = document.getElementById(`filter_${upperLevel}`);
+                    if (upperSelect) {
+                        const selectedValues = Array.from(upperSelect.selectedOptions).map(opt => opt.value);
+                        if (selectedValues.length > 0 && !selectedValues.includes(String(r[upperLevel]))) {
+                            return false;
+                        }
+                    }
+                }
+                
+                return true;
+            });
+            
+            return row ? row['ディビジョン'] : null;
+        }
+        
+        function createSVGTree(memberRow, nonMemberRow, totalAmount, totalAmountRatio, isDual) {
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('class', isDual ? 'tree-svg dual' : 'tree-svg');
+            
+            if (isDual) {
+                // デュアル表示用の設定
+                svg.setAttribute('viewBox', '0 0 800 900');
+                svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+                
+                const nodeWidth = 155;
+                const nodeHeight = 90;
+                const nodeRadius = 15;
+                const fontSize = { title: 12, value: 16, ratio: 12 };
+                
+                // 座標定義（間隔調整版）
+                const rootX = 400 - nodeWidth / 2;
+                const rootY = 50;
+                
+                const level1Y = 200;
+                const memberL1X = 180 - nodeWidth / 2;
+                const nonMemberL1X = 530 - nodeWidth / 2;
+                
+                const level2Y = 350;
+                const memberPosX = 90 - nodeWidth / 2;
+                const memberAmountX = 270 - nodeWidth / 2;
+                const nonMemberPosX = 440 - nodeWidth / 2;
+                const nonMemberAmountX = 620 - nodeWidth / 2;
+                
+                const level3Y = 500;
+                const level4Y = 650;
+                
+                // ルートノード描画
+                drawNode(svg, rootX, rootY, nodeWidth, nodeHeight, nodeRadius, true,
+                    '購入金額',
+                    formatNumber(totalAmount / 1000) + '千円',
+                    formatRatio(totalAmountRatio),
+                    totalAmountRatio < 100,
+                    fontSize
+                );
+                
+                // ルートから第1階層への線
+                drawLine(svg, 400, rootY + nodeHeight, 400, level1Y - 30);
+                drawLine(svg, 180, level1Y - 30, 530, level1Y - 30);
+                drawLine(svg, 180, level1Y - 30, 180, level1Y);
+                drawLine(svg, 530, level1Y - 30, 530, level1Y);
+                
+                // 会員側のツリー
+                if (memberRow) {
+                    drawNode(svg, memberL1X, level1Y, nodeWidth, nodeHeight, nodeRadius, false,
+                        '購入金額（会員）',
+                        formatNumber(memberRow['売上税抜金額(円)'] / 1000) + '千円',
+                        formatRatio(memberRow['売上税抜金額(円)(期間比)'] * 100),
+                        memberRow['売上税抜金額(円)(期間比)'] * 100 < 100,
+                        fontSize
+                    );
+                    
+                    // 第1階層から第2階層への線
+                    drawLine(svg, 180, level1Y + nodeHeight, 180, level2Y - 30);
+                    drawLine(svg, 90, level2Y - 30, 270, level2Y - 30);
+                    drawLine(svg, 90, level2Y - 30, 90, level2Y);
+                    drawLine(svg, 270, level2Y - 30, 270, level2Y);
+                    
+                    // 第2階層：POS客数、1回あたり購入金額
+                    drawNode(svg, memberPosX, level2Y, nodeWidth, nodeHeight, nodeRadius, false,
+                        'POS客数',
+                        formatNumber(memberRow['POS客数']) + '人',
+                        formatRatio(memberRow['POS客数(期間比)'] * 100),
+                        memberRow['POS客数(期間比)'] * 100 < 100,
+                        fontSize
+                    );
+                    
+                    drawNode(svg, memberAmountX, level2Y, nodeWidth, nodeHeight, nodeRadius, false,
+                        '1回あたり購入金額',
+                        formatNumber(memberRow['客単価(税抜)'], 1) + '円',
+                        formatRatio(memberRow['客単価(税抜)(期間比)'] * 100),
+                        memberRow['客単価(税抜)(期間比)'] * 100 < 100,
+                        fontSize
+                    );
+                    
+                    // POS客数から下に長い縦線（購入頻度まで通過）
+                    const posBottomY = level2Y + nodeHeight;
+                    const verticalLineEndY = level4Y + nodeHeight / 2;
+                    drawLine(svg, 90, posBottomY, 90, verticalLineEndY);
+                    
+                    // 第3階層：ID客数（会員）- 縦線の右側
+                    const memberIdNodeLeft = 110;
+                    const idCenterY = level3Y + nodeHeight / 2;
+                    drawLine(svg, 90, idCenterY, memberIdNodeLeft, idCenterY);
+                    drawNode(svg, memberIdNodeLeft, level3Y, nodeWidth, nodeHeight, nodeRadius, false,
+                        'ID客数',
+                        formatNumber(memberRow['ID客数']) + '人',
+                        formatRatio(memberRow['ID客数(期間比)'] * 100),
+                        memberRow['ID客数(期間比)'] * 100 < 100,
+                        fontSize
+                    );
+                    
+                    // 第4階層：購入頻度（会員）- 縦線の右側
+                    const memberFreqNodeLeft = 110;
+                    const freqCenterY = level4Y + nodeHeight / 2;
+                    drawLine(svg, 90, freqCenterY, memberFreqNodeLeft, freqCenterY);
+                    drawNode(svg, memberFreqNodeLeft, level4Y, nodeWidth, nodeHeight, nodeRadius, false,
+                        '購入頻度',
+                        formatNumber(memberRow['来店頻度'], 3) + '回',
+                        formatRatio(memberRow['来店頻度(期間比)'] * 100),
+                        memberRow['来店頻度(期間比)'] * 100 < 100,
+                        fontSize
+                    );
+                    
+                    // 1回あたり購入金額から下に長い縦線（平均売価まで通過）
+                    const amountBottomY = level2Y + nodeHeight;
+                    drawLine(svg, 270, amountBottomY, 270, verticalLineEndY);
+                    
+                    // 第3階層：1回あたり購入点数（会員）- 縦線の右側
+                    const memberQtyNodeLeft = 290;
+                    const qtyCenterY = level3Y + nodeHeight / 2;
+                    drawLine(svg, 270, qtyCenterY, memberQtyNodeLeft, qtyCenterY);
+                    drawNode(svg, memberQtyNodeLeft, level3Y, nodeWidth, nodeHeight, nodeRadius, false,
+                        '1回あたり購入点数',
+                        formatNumber(memberRow['1回あたり点数'], 3) + '個',
+                        formatRatio(memberRow['1回あたり点数(期間比)'] * 100),
+                        memberRow['1回あたり点数(期間比)'] * 100 < 100,
+                        fontSize
+                    );
+                    
+                    // 第4階層：平均売価（会員）- 縦線の右側
+                    const memberAvgPriceNodeLeft = 290;
+                    const priceCenterY = level4Y + nodeHeight / 2;
+                    drawLine(svg, 270, priceCenterY, memberAvgPriceNodeLeft, priceCenterY);
+                    drawNode(svg, memberAvgPriceNodeLeft, level4Y, nodeWidth, nodeHeight, nodeRadius, false,
+                        '平均売価',
+                        formatNumber(memberRow['売単価(税込)'], 1) + '円',
+                        formatRatio(memberRow['売単価(税込)(期間比)'] * 100),
+                        memberRow['売単価(税込)(期間比)'] * 100 < 100,
+                        fontSize
+                    );
+                }
+                
+                // 非会員側のツリー
+                if (nonMemberRow) {
+                    drawNode(svg, nonMemberL1X, level1Y, nodeWidth, nodeHeight, nodeRadius, false,
+                        '購入金額（非会員）',
+                        formatNumber(nonMemberRow['売上税抜金額(円)'] / 1000) + '千円',
+                        formatRatio(nonMemberRow['売上税抜金額(円)(期間比)'] * 100),
+                        nonMemberRow['売上税抜金額(円)(期間比)'] * 100 < 100,
+                        fontSize
+                    );
+                    
+                    // 第1階層から第2階層への線
+                    drawLine(svg, 530, level1Y + nodeHeight, 530, level2Y - 30);
+                    drawLine(svg, 440, level2Y - 30, 620, level2Y - 30);
+                    drawLine(svg, 440, level2Y - 30, 440, level2Y);
+                    drawLine(svg, 620, level2Y - 30, 620, level2Y);
+                    
+                    // 第2階層：POS客数、1回あたり購入金額
+                    drawNode(svg, nonMemberPosX, level2Y, nodeWidth, nodeHeight, nodeRadius, false,
+                        'POS客数',
+                        formatNumber(nonMemberRow['POS客数']) + '人',
+                        formatRatio(nonMemberRow['POS客数(期間比)'] * 100),
+                        nonMemberRow['POS客数(期間比)'] * 100 < 100,
+                        fontSize
+                    );
+                    
+                    drawNode(svg, nonMemberAmountX, level2Y, nodeWidth, nodeHeight, nodeRadius, false,
+                        '1回あたり購入金額',
+                        formatNumber(nonMemberRow['客単価(税抜)'], 1) + '円',
+                        formatRatio(nonMemberRow['客単価(税抜)(期間比)'] * 100),
+                        nonMemberRow['客単価(税抜)(期間比)'] * 100 < 100,
+                        fontSize
+                    );
+                    
+                    // 1回あたり購入金額から下に長い縦線（平均売価まで通過）
+                    const amountBottomY = level2Y + nodeHeight;
+                    const verticalLineEndY = level4Y + nodeHeight / 2;
+                    drawLine(svg, 620, amountBottomY, 620, verticalLineEndY);
+                    
+                    // 第3階層：1回あたり購入点数（非会員）- 縦線の右側
+                    const nonMemberQtyNodeLeft = 640;
+                    const qtyCenterY = level3Y + nodeHeight / 2;
+                    drawLine(svg, 620, qtyCenterY, nonMemberQtyNodeLeft, qtyCenterY);
+                    drawNode(svg, nonMemberQtyNodeLeft, level3Y, nodeWidth, nodeHeight, nodeRadius, false,
+                        '1回あたり購入点数',
+                        formatNumber(nonMemberRow['1回あたり点数'], 3) + '個',
+                        formatRatio(nonMemberRow['1回あたり点数(期間比)'] * 100),
+                        nonMemberRow['1回あたり点数(期間比)'] * 100 < 100,
+                        fontSize
+                    );
+                    
+                    // 第4階層：平均売価（非会員）- 縦線の右側
+                    const nonMemberAvgPriceNodeLeft = 640;
+                    const priceCenterY = level4Y + nodeHeight / 2;
+                    drawLine(svg, 620, priceCenterY, nonMemberAvgPriceNodeLeft, priceCenterY);
+                    drawNode(svg, nonMemberAvgPriceNodeLeft, level4Y, nodeWidth, nodeHeight, nodeRadius, false,
+                        '平均売価',
+                        formatNumber(nonMemberRow['売単価(税込)'], 1) + '円',
+                        formatRatio(nonMemberRow['売単価(税込)(期間比)'] * 100),
+                        nonMemberRow['売単価(税込)(期間比)'] * 100 < 100,
+                        fontSize
+                    );
+                }
+                
+            } else {
+                // 通常表示用の設定
+                svg.setAttribute('viewBox', '0 0 1400 900');
+                svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+                
+                const nodeWidth = 220;
+                const nodeHeight = 100;
+                const nodeRadius = 20;
+                const fontSize = { title: 14, value: 18, ratio: 14 };
+                
+                // 通常サイズの座標定義
+                const rootX = 700 - nodeWidth / 2;
+                const rootY = 50;
+                
+                const level1Y = 220;
+                const memberL1X = 370 - nodeWidth / 2;
+                const nonMemberL1X = 980 - nodeWidth / 2;
+                
+                const level2Y = 390;
+                const memberPosX = 200 - nodeWidth / 2;
+                const memberAmountX = 480 - nodeWidth / 2;
+                const nonMemberPosX = 870 - nodeWidth / 2;
+                const nonMemberAmountX = 1150 - nodeWidth / 2;
+                
+                const level3Y = 560;
+                const level4Y = 730;
+                
+                // ルートノード描画
+                drawNode(svg, rootX, rootY, nodeWidth, nodeHeight, nodeRadius, true,
+                    '購入金額',
+                    formatNumber(totalAmount / 1000) + '千円',
+                    formatRatio(totalAmountRatio),
+                    totalAmountRatio < 100,
+                    fontSize
+                );
+                
+                // ルートから第1階層への線
+                drawLine(svg, 700, rootY + nodeHeight, 700, level1Y - 30);
+                drawLine(svg, 370, level1Y - 30, 980, level1Y - 30);
+                drawLine(svg, 370, level1Y - 30, 370, level1Y);
+                drawLine(svg, 980, level1Y - 30, 980, level1Y);
+                
+                // 会員側のツリー
+                if (memberRow) {
+                    // 第1階層：購入金額（会員）
+                    drawNode(svg, memberL1X, level1Y, nodeWidth, nodeHeight, nodeRadius, false,
+                        '購入金額（会員）',
+                        formatNumber(memberRow['売上税抜金額(円)'] / 1000) + '千円',
+                        formatRatio(memberRow['売上税抜金額(円)(期間比)'] * 100),
+                        memberRow['売上税抜金額(円)(期間比)'] * 100 < 100,
+                        fontSize
+                    );
+                    
+                    // 第1階層から第2階層への線
+                    drawLine(svg, 370, level1Y + nodeHeight, 370, level2Y - 30);
+                    drawLine(svg, 200, level2Y - 30, 480, level2Y - 30);
+                    drawLine(svg, 200, level2Y - 30, 200, level2Y);
+                    drawLine(svg, 480, level2Y - 30, 480, level2Y);
+                    
+                    // 第2階層：POS客数（会員）
+                    drawNode(svg, memberPosX, level2Y, nodeWidth, nodeHeight, nodeRadius, false,
+                        'POS客数（会員）',
+                        formatNumber(memberRow['POS客数']) + '人',
+                        formatRatio(memberRow['POS客数(期間比)'] * 100),
+                        memberRow['POS客数(期間比)'] * 100 < 100,
+                        fontSize
+                    );
+                    
+                    // 第2階層：1回あたり購入金額（会員）
+                    drawNode(svg, memberAmountX, level2Y, nodeWidth, nodeHeight, nodeRadius, false,
+                        '1回あたり購入金額（会員）',
+                        formatNumber(memberRow['客単価(税抜)'], 1) + '円',
+                        formatRatio(memberRow['客単価(税抜)(期間比)'] * 100),
+                        memberRow['客単価(税抜)(期間比)'] * 100 < 100,
+                        fontSize
+                    );
+                    
+                    // POS客数から下に長い縦線（購入頻度まで通過）
+                    const posBottomY = level2Y + nodeHeight;
+                    const verticalLineEndY = level4Y + nodeHeight / 2;
+                    drawLine(svg, 200, posBottomY, 200, verticalLineEndY);
+                    
+                    // 第3階層：ID客数（会員）- 縦線の右側
+                    const memberIdNodeLeft = 220;
+                    const idCenterY = level3Y + nodeHeight / 2;
+                    drawLine(svg, 200, idCenterY, memberIdNodeLeft, idCenterY);
+                    drawNode(svg, memberIdNodeLeft, level3Y, nodeWidth, nodeHeight, nodeRadius, false,
+                        'ID客数（会員）',
+                        formatNumber(memberRow['ID客数']) + '人',
+                        formatRatio(memberRow['ID客数(期間比)'] * 100),
+                        memberRow['ID客数(期間比)'] * 100 < 100,
+                        fontSize
+                    );
+                    
+                    // 第4階層：購入頻度（会員）- 縦線の右側
+                    const memberFreqNodeLeft = 220;
+                    const freqCenterY = level4Y + nodeHeight / 2;
+                    drawLine(svg, 200, freqCenterY, memberFreqNodeLeft, freqCenterY);
+                    drawNode(svg, memberFreqNodeLeft, level4Y, nodeWidth, nodeHeight, nodeRadius, false,
+                        '購入頻度（会員）',
+                        formatNumber(memberRow['来店頻度'], 3) + '回',
+                        formatRatio(memberRow['来店頻度(期間比)'] * 100),
+                        memberRow['来店頻度(期間比)'] * 100 < 100,
+                        fontSize
+                    );
+                    
+                    // 1回あたり購入金額から下に長い縦線（平均売価まで通過）
+                    const amountBottomY = level2Y + nodeHeight;
+                    drawLine(svg, 480, amountBottomY, 480, verticalLineEndY);
+                    
+                    // 第3階層：1回あたり購入点数（会員）- 縦線の右側
+                    const memberQtyNodeLeft = 500;
+                    const qtyCenterY = level3Y + nodeHeight / 2;
+                    drawLine(svg, 480, qtyCenterY, memberQtyNodeLeft, qtyCenterY);
+                    drawNode(svg, memberQtyNodeLeft, level3Y, nodeWidth, nodeHeight, nodeRadius, false,
+                        '1回あたり購入点数（会員）',
+                        formatNumber(memberRow['1回あたり点数'], 3) + '個',
+                        formatRatio(memberRow['1回あたり点数(期間比)'] * 100),
+                        memberRow['1回あたり点数(期間比)'] * 100 < 100,
+                        fontSize
+                    );
+                    
+                    // 第4階層：平均売価（会員）- 縦線の右側
+                    const memberAvgPriceNodeLeft = 500;
+                    const priceCenterY = level4Y + nodeHeight / 2;
+                    drawLine(svg, 480, priceCenterY, memberAvgPriceNodeLeft, priceCenterY);
+                    drawNode(svg, memberAvgPriceNodeLeft, level4Y, nodeWidth, nodeHeight, nodeRadius, false,
+                        '平均売価（会員）',
+                        formatNumber(memberRow['売単価(税込)'], 1) + '円',
+                        formatRatio(memberRow['売単価(税込)(期間比)'] * 100),
+                        memberRow['売単価(税込)(期間比)'] * 100 < 100,
+                        fontSize
+                    );
+                }
+                
+                // 非会員側のツリー
+                if (nonMemberRow) {
+                    // 第1階層：購入金額（非会員）
+                    drawNode(svg, nonMemberL1X, level1Y, nodeWidth, nodeHeight, nodeRadius, false,
+                        '購入金額（非会員）',
+                        formatNumber(nonMemberRow['売上税抜金額(円)'] / 1000) + '千円',
+                        formatRatio(nonMemberRow['売上税抜金額(円)(期間比)'] * 100),
+                        nonMemberRow['売上税抜金額(円)(期間比)'] * 100 < 100,
+                        fontSize
+                    );
+                    
+                    // 第1階層から第2階層への線
+                    drawLine(svg, 980, level1Y + nodeHeight, 980, level2Y - 30);
+                    drawLine(svg, 870, level2Y - 30, 1150, level2Y - 30);
+                    drawLine(svg, 870, level2Y - 30, 870, level2Y);
+                    drawLine(svg, 1150, level2Y - 30, 1150, level2Y);
+                    
+                    // 第2階層：POS客数（非会員）
+                    drawNode(svg, nonMemberPosX, level2Y, nodeWidth, nodeHeight, nodeRadius, false,
+                        'POS客数（非会員）',
+                        formatNumber(nonMemberRow['POS客数']) + '人',
+                        formatRatio(nonMemberRow['POS客数(期間比)'] * 100),
+                        nonMemberRow['POS客数(期間比)'] * 100 < 100,
+                        fontSize
+                    );
+                    
+                    // 第2階層：1回あたり購入金額（非会員）
+                    drawNode(svg, nonMemberAmountX, level2Y, nodeWidth, nodeHeight, nodeRadius, false,
+                        '1回あたり購入金額（非会員）',
+                        formatNumber(nonMemberRow['客単価(税抜)'], 1) + '円',
+                        formatRatio(nonMemberRow['客単価(税抜)(期間比)'] * 100),
+                        nonMemberRow['客単価(税抜)(期間比)'] * 100 < 100,
+                        fontSize
+                    );
+                    
+                    // 1回あたり購入金額（非会員）から下に長い縦線（平均売価まで通過）
+                    const amountBottomY = level2Y + nodeHeight;
+                    const verticalLineEndY = level4Y + nodeHeight / 2;
+                    drawLine(svg, 1150, amountBottomY, 1150, verticalLineEndY);
+                    
+                    // 第3階層：1回あたり購入点数（非会員）- 縦線の右側
+                    const nonMemberQtyNodeLeft = 1170;
+                    const qtyCenterY = level3Y + nodeHeight / 2;
+                    drawLine(svg, 1150, qtyCenterY, nonMemberQtyNodeLeft, qtyCenterY);
+                    drawNode(svg, nonMemberQtyNodeLeft, level3Y, nodeWidth, nodeHeight, nodeRadius, false,
+                        '1回あたり購入点数（非会員）',
+                        formatNumber(nonMemberRow['1回あたり点数'], 3) + '個',
+                        formatRatio(nonMemberRow['1回あたり点数(期間比)'] * 100),
+                        nonMemberRow['1回あたり点数(期間比)'] * 100 < 100,
+                        fontSize
+                    );
+                    
+                    // 第4階層：平均売価（非会員）- 縦線の右側
+                    const nonMemberAvgPriceNodeLeft = 1170;
+                    const priceCenterY = level4Y + nodeHeight / 2;
+                    drawLine(svg, 1150, priceCenterY, nonMemberAvgPriceNodeLeft, priceCenterY);
+                    drawNode(svg, nonMemberAvgPriceNodeLeft, level4Y, nodeWidth, nodeHeight, nodeRadius, false,
+                        '平均売価（非会員）',
+                        formatNumber(nonMemberRow['売単価(税込)'], 1) + '円',
+                        formatRatio(nonMemberRow['売単価(税込)(期間比)'] * 100),
+                        nonMemberRow['売単価(税込)(期間比)'] * 100 < 100,
+                        fontSize
+                    );
+                }
+            }
+            
+            return svg;
+        }
+        
+        function drawNode(svg, x, y, width, height, radius, isRoot, title, value, ratio, isNegative, fontSize) {
+            // 角丸矩形
+            const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            rect.setAttribute('x', x);
+            rect.setAttribute('y', y);
+            rect.setAttribute('width', width);
+            rect.setAttribute('height', height);
+            rect.setAttribute('rx', radius);
+            rect.setAttribute('ry', radius);
+            
+            if (isRoot) {
+                rect.setAttribute('fill', '#e8f4f8');
+                rect.setAttribute('stroke', '#1F5F8B');
+                rect.setAttribute('stroke-width', '2');
+            } else {
+                rect.setAttribute('fill', 'white');
+                rect.setAttribute('stroke', '#333');
+                rect.setAttribute('stroke-width', '2');
+            }
+            svg.appendChild(rect);
+            
+            // テキストの中心座標
+            const centerX = x + width / 2;
+            const centerY = y + height / 2;
+            
+            // タイトル（改行対応）
+            const titleLines = splitText(title, 18);
+            const titleStartY = centerY - 20;
+            
+            titleLines.forEach((line, index) => {
+                const titleText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                titleText.setAttribute('x', centerX);
+                titleText.setAttribute('y', titleStartY + (index * (fontSize.title + 2)));
+                titleText.setAttribute('text-anchor', 'middle');
+                titleText.setAttribute('font-family', 'Hiragino Sans, Yu Gothic, Meiryo, MS PGothic, sans-serif');
+                titleText.setAttribute('font-size', fontSize.title);
+                titleText.setAttribute('fill', '#333');
+                titleText.textContent = line;
+                svg.appendChild(titleText);
+            });
+            
+            // 値
+            const valueText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            valueText.setAttribute('x', centerX);
+            valueText.setAttribute('y', centerY + 5);
+            valueText.setAttribute('text-anchor', 'middle');
+            valueText.setAttribute('font-family', 'Hiragino Sans, Yu Gothic, Meiryo, MS PGothic, sans-serif');
+            valueText.setAttribute('font-size', fontSize.value);
+            valueText.setAttribute('font-weight', 'bold');
+            valueText.setAttribute('fill', '#333');
+            valueText.textContent = value;
+            svg.appendChild(valueText);
+            
+            // 昨対比
+            const ratioText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            ratioText.setAttribute('x', centerX);
+            ratioText.setAttribute('y', centerY + 5 + fontSize.value + 3);
+            ratioText.setAttribute('text-anchor', 'middle');
+            ratioText.setAttribute('font-family', 'Hiragino Sans, Yu Gothic, Meiryo, MS PGothic, sans-serif');
+            ratioText.setAttribute('font-size', fontSize.ratio);
+            ratioText.setAttribute('font-weight', 'bold');
+            ratioText.setAttribute('fill', isNegative ? '#d32f2f' : '#333');
+            ratioText.textContent = ratio;
+            svg.appendChild(ratioText);
+        }
+        
+        function splitText(text, maxLength) {
+            if (text.length <= maxLength) {
+                return [text];
+            }
+            
+            const lines = [];
+            let currentLine = '';
+            
+            for (let i = 0; i < text.length; i++) {
+                currentLine += text[i];
+                
+                // 括弧の後や特定の位置で改行
+                if (currentLine.includes('（') && text[i] === '）') {
+                    lines.push(currentLine);
+                    currentLine = '';
+                } else if (currentLine.length >= maxLength) {
+                    lines.push(currentLine);
+                    currentLine = '';
+                }
+            }
+            
+            if (currentLine) {
+                lines.push(currentLine);
+            }
+            
+            return lines;
+        }
+        
+        function drawLine(svg, x1, y1, x2, y2) {
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('x1', x1);
+            line.setAttribute('y1', y1);
+            line.setAttribute('x2', x2);
+            line.setAttribute('y2', y2);
+            line.setAttribute('class', 'tree-line');
+            svg.appendChild(line);
+        }
+        
+        function calculateRatio(current, previous) {
+            if (previous === 0 || isNaN(previous) || previous === null) return 0;
+            return (current / previous) * 100;
+        }
+        
+        function formatNumber(value, decimals = 0) {
+            if (value === 0 || isNaN(value) || value === null) return '0';
+            return value.toLocaleString('ja-JP', {
+                minimumFractionDigits: decimals,
+                maximumFractionDigits: decimals
+            });
+        }
+        
+        function formatRatio(value) {
+            if (value === 0 || isNaN(value) || value === null) return '';
+            return `昨対比 ${value.toFixed(1)}%`;
+        }
+        
+        document.getElementById('downloadBtn').addEventListener('click', async () => {
+            const charts = document.querySelectorAll('.decomposition-chart');
+            
+            for (let i = 0; i < charts.length; i++) {
+                const chart = charts[i];
+                const itemName = chart.dataset.itemName;
+                
+                try {
+                    const canvas = await html2canvas(chart, {
+                        backgroundColor: '#ffffff',
+                        scale: 2,
+                        useCORS: true,
+                        allowTaint: false,
+                        logging: false,
+                        windowWidth: chart.scrollWidth,
+                        windowHeight: chart.scrollHeight
+                    });
+                    
+                    const link = document.createElement('a');
+                    link.download = `売上分解表_${itemName}.png`;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                    
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                } catch (error) {
+                    console.error(`画像生成エラー (${itemName}):`, error);
+                }
+            }
+        });
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
