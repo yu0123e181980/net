@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>カテゴリーマネジメントツール</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- ヘッダー -->
+  <header class="header">
+    <div class="header-content">
+      <div class="logo-section">
+        <h1>📊 カテゴリーマネジメントツール</h1>
+        <span class="version-badge">v1.0.0</span>
+      </div>
+      <div class="header-actions">
+        <button id="btn-settings" class="btn-icon" title="設定">⚙️</button>
+        <button id="btn-help" class="btn-icon" title="ヘルプ">❓</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- メインコンテナ -->
+  <div class="main-container">
+    <!-- サイドバー -->
+    <aside class="sidebar">
+      <nav class="nav-menu">
+        <button class="nav-item active" data-view="dashboard">
+          <span class="nav-icon">📈</span>
+          <span class="nav-label">ダッシュボード</span>
+        </button>
+        <button class="nav-item" data-view="data-import">
+          <span class="nav-icon">📥</span>
+          <span class="nav-label">データ取込</span>
+        </button>
+        <button class="nav-item" data-view="category-analysis">
+          <span class="nav-icon">📊</span>
+          <span class="nav-label">カテゴリー分析</span>
+        </button>
+        <button class="nav-item" data-view="shelf-planning">
+          <span class="nav-icon">🏪</span>
+          <span class="nav-label">棚割計画</span>
+        </button>
+        <button class="nav-item" data-view="reports">
+          <span class="nav-icon">📄</span>
+          <span class="nav-label">レポート</span>
+        </button>
+        <button class="nav-item" data-view="export">
+          <span class="nav-icon">📤</span>
+          <span class="nav-label">データ出力</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="status-indicator">
+          <span class="status-dot status-ready"></span>
+          <span class="status-text">準備完了</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- メインコンテンツエリア -->
+    <main class="content-area">
+      <!-- ダッシュボードビュー -->
+      <div id="view-dashboard" class="view-content active">
+        <div class="content-header">
+          <h2>ダッシュボード</h2>
+          <p class="subtitle">カテゴリーマネジメントの概要</p>
+        </div>
+
+        <div class="card-grid">
+          <div class="card">
+            <div class="card-header">
+              <h3>📥 データ取込</h3>
+            </div>
+            <div class="card-body">
+              <p>POSデータやマスタデータをインポートします</p>
+              <button class="btn-primary" onclick="navigateToView('data-import')">
+                データ取込を開始
+              </button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3>📊 カテゴリー分析</h3>
+            </div>
+            <div class="card-body">
+              <p>売上・利益・在庫状況を可視化します</p>
+              <button class="btn-primary" onclick="navigateToView('category-analysis')">
+                分析を開始
+              </button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3>🏪 棚割計画</h3>
+            </div>
+            <div class="card-body">
+              <p>最適な棚割プランを作成します</p>
+              <button class="btn-primary" onclick="navigateToView('shelf-planning')">
+                棚割計画を作成
+              </button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3>📄 レポート作成</h3>
+            </div>
+            <div class="card-body">
+              <p>分析結果をレポート形式で出力します</p>
+              <button class="btn-primary" onclick="navigateToView('reports')">
+                レポートを作成
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="info-section">
+          <div class="info-card">
+            <h4>🎯 カテゴリーマネジメントとは</h4>
+            <p>
+              カテゴリーマネジメントは、商品カテゴリーを戦略的ビジネスユニットとして管理し、
+              消費者ニーズに基づいた最適な品揃えと売場展開を実現する手法です。
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- データ取込ビュー -->
+      <div id="view-data-import" class="view-content">
+        <div class="content-header">
+          <h2>📥 データ取込</h2>
+          <p class="subtitle">Excel/CSVファイルからデータをインポート</p>
+        </div>
+
+        <div class="upload-area">
+          <div class="upload-zone" id="upload-zone">
+            <div class="upload-icon">📁</div>
+            <h3>ファイルをドロップ または クリックして選択</h3>
+            <p>対応形式: Excel (.xlsx, .xls), CSV (.csv)</p>
+            <input type="file" id="file-input" accept=".xlsx,.xls,.csv" multiple style="display: none;">
+          </div>
+        </div>
+
+        <div id="file-list" class="file-list"></div>
+
+        <div class="action-buttons">
+          <button id="btn-import" class="btn-primary" disabled>
+            データを取り込む
+          </button>
+          <button id="btn-clear-files" class="btn-secondary">
+            クリア
+          </button>
+        </div>
+      </div>
+
+      <!-- カテゴリー分析ビュー -->
+      <div id="view-category-analysis" class="view-content">
+        <div class="content-header">
+          <h2>📊 カテゴリー分析</h2>
+          <p class="subtitle">売上・利益・在庫の可視化と分析</p>
+        </div>
+
+        <div class="analysis-container">
+          <div class="chart-container">
+            <canvas id="sales-chart"></canvas>
+          </div>
+          <div class="chart-container">
+            <canvas id="profit-chart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- 棚割計画ビュー -->
+      <div id="view-shelf-planning" class="view-content">
+        <div class="content-header">
+          <h2>🏪 棚割計画</h2>
+          <p class="subtitle">最適な棚割プランの作成</p>
+        </div>
+
+        <div class="planning-area">
+          <p class="coming-soon">この機能は開発中です</p>
+        </div>
+      </div>
+
+      <!-- レポートビュー -->
+      <div id="view-reports" class="view-content">
+        <div class="content-header">
+          <h2>📄 レポート作成</h2>
+          <p class="subtitle">分析結果のレポート出力</p>
+        </div>
+
+        <div class="report-options">
+          <p class="coming-soon">この機能は開発中です</p>
+        </div>
+      </div>
+
+      <!-- データ出力ビュー -->
+      <div id="view-export" class="view-content">
+        <div class="content-header">
+          <h2>📤 データ出力</h2>
+          <p class="subtitle">分析結果をエクスポート</p>
+        </div>
+
+        <div class="export-options">
+          <p class="coming-soon">この機能は開発中です</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- プログレスバーモーダル -->
+  <div id="progress-modal" class="modal">
+    <div class="modal-content">
+      <h3 id="progress-title">処理中...</h3>
+      <div class="progress-bar-container">
+        <div id="progress-bar" class="progress-bar"></div>
+      </div>
+      <p id="progress-message">処理を実行しています</p>
+      <div id="progress-percentage" class="progress-percentage">0%</div>
+    </div>
+  </div>
+
+  <!-- 通知トースト -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- アプリケーションスクリプト -->
+  <script src="js/app.js"></script>
+</body>
+</html>

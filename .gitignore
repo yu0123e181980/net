@@ -1,0 +1,89 @@
+# ===========================
+# Node.js
+# ===========================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# ===========================
+# Electron
+# ===========================
+dist/
+out/
+build/
+
+# ===========================
+# ログファイル
+# ===========================
+logs/
+*.log
+
+# ===========================
+# データファイル
+# ===========================
+data/input/*
+!data/input/.gitkeep
+data/output/*
+!data/output/.gitkeep
+
+# ===========================
+# OS固有
+# ===========================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+
+# ===========================
+# IDE / エディタ
+# ===========================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.settings/
+.classpath
+
+# ===========================
+# Python
+# ===========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+*.egg-info/
+dist-python/
+build-python/
+
+# ===========================
+# 一時ファイル
+# ===========================
+*.tmp
+*.temp
+*.bak
+*.cache
+
+# ===========================
+# 設定ファイル（機密情報）
+# ===========================
+.env
+.env.local
+config/secrets.json

@@ -1,0 +1,61 @@
+{
+  "name": "category-management-tool",
+  "version": "1.0.0",
+  "description": "食品小売業界向けカテゴリーマネジメントツール",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux"
+  },
+  "keywords": [
+    "category-management",
+    "retail",
+    "analytics",
+    "electron"
+  ],
+  "author": "Category Management Team",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "dependencies": {
+    "chart.js": "^4.4.1",
+    "plotly.js-dist": "^2.27.1"
+  },
+  "build": {
+    "appId": "com.categorymanagement.tool",
+    "productName": "カテゴリーマネジメントツール",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "data/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "build/icon.ico"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "icon": "build/icon.icns"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "icon": "build/icon.png",
+      "category": "Office"
+    }
+  }
+}
